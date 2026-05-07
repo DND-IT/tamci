@@ -1,0 +1,58 @@
+name: 'action-config'
+description: 'Github Action for reading configuration files and generating workflow matrices'
+author: 'group:default/dai'
+
+inputs:
+  config_path:
+    description: 'Path to the configuration file (JSON or YAML)'
+    required: true
+    default: '.github/matrix-config.yaml'
+  dimension:
+    description: 'Set the primary dimension. Used for directory field, target filtering, and change detection.'
+    required: false
+    default: ''
+  target:
+    description: 'Filter by dimension value(s). Comma-separated for multiple.'
+    required: false
+    default: ''
+  environment:
+    description: 'Filter environments. Comma-separated for multiple.'
+    required: false
+    default: ''
+  exclude:
+    description: 'JSON array of patterns to exclude from the matrix'
+    required: false
+    default: ''
+  include:
+    description: 'JSON array of entries to append to the matrix'
+    required: false
+    default: ''
+  change_detection:
+    description: 'Use git to detect changed files and filter the matrix.'
+    required: false
+    default: 'false'
+  summary:
+    description: 'Write all output values to the GitHub Actions step summary.'
+    required: false
+    default: 'true'
+
+outputs:
+  matrix:
+    description: 'JSON string containing the matrix configuration'
+  changes_detected:
+    description: 'Whether any entries have changes (true/false).'
+  config:
+    description: 'JSON object keyed by dimension values for direct field access via fromJson().'
+  length:
+    description: 'Number of entries in the matrix.'
+  config_file:
+    description: 'Path to the configuration file that was actually read.'
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0' # x-release-please-version
+  args: [config]
+
+branding:
+  icon: 'zap'
+  color: 'blue'

@@ -1,0 +1,78 @@
+name: 'action-release'
+description: 'Flexible GitHub Action for versioned releases powered by git-cliff'
+author: 'group:default/dai'
+
+inputs:
+  version-strategy:
+    description: 'Versioning strategy: semver or calver'
+    required: false
+    default: 'semver'
+  cliff-config:
+    description: 'Path to custom cliff.toml (auto-detects cliff.toml in repo root if not set)'
+    required: false
+    default: ''
+  tag-prefix:
+    description: 'Prefix for git tags (e.g. v, release-)'
+    required: false
+    default: ''
+  release-mode:
+    description: 'Release mode: direct (immediate release) or pr (release Pull Request, release on merge)'
+    required: false
+    default: 'direct'
+  draft:
+    description: 'Create release as draft'
+    required: false
+    default: 'false'
+  prerelease:
+    description: 'Mark release as prerelease'
+    required: false
+    default: 'false'
+  include-path:
+    description: 'Glob pattern to scope commits by file path (e.g. "services/api/**").'
+    required: false
+    default: ''
+  dry-run:
+    description: 'Calculate version and changelog but do not create a tag or release'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'GitHub token for release creation. Needs contents:write scope.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  version:
+    description: 'Calculated version string (empty if skipped)'
+  changelog:
+    description: 'Generated changelog text (empty if skipped)'
+  tag:
+    description: 'Created git tag (empty if skipped or dry-run)'
+  release-url:
+    description: 'URL of the published GitHub Release.'
+  previous-version:
+    description: 'Previous version tag (empty on first release)'
+  skipped:
+    description: 'true if no release was created, false otherwise'
+  pr-url:
+    description: 'Release Pull Request URL (only in pr mode).'
+  dry-run:
+    description: 'true if dry-run mode was active'
+  release-published:
+    description: 'true when a GitHub Release was actually created.'
+  release-pr-url:
+    description: 'URL of the open release Pull Request (only set in pr mode while pending merge)'
+  release-pr-number:
+    description: 'Number of the open release Pull Request'
+  release-mode:
+    description: 'Active release mode: "direct" or "pr".'
+  pr-created:
+    description: 'true when a new release Pull Request was opened in this run.'
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0' # x-release-please-version
+  args: [release]
+
+branding:
+  icon: 'tag'
+  color: 'green'

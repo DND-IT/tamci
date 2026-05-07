@@ -1,0 +1,93 @@
+name: Rollout
+description: Atomically updates Helm values files (matrix mode driven by matrix.config.yaml, or direct mode for a single file).
+author: DND-IT
+
+inputs:
+  service:
+    description: "Service name; must match a key under service: in the matrix config"
+    required: false
+  version:
+    description: "Release version string (e.g. 1.4.0 or 2026.04.14)"
+    required: false
+  sha:
+    description: "Short commit SHA; used when an environment has tag: sha"
+    required: false
+  config:
+    description: "Path to the matrix config file"
+    required: false
+    default: ".github/matrix-config.yaml"
+  charts_dir:
+    description: "Root directory for per-service Helm chart value overrides"
+    required: false
+    default: "deploy/charts"
+
+  file:
+    description: "Path to YAML file(s) to update — newline-separated for multiple. Triggers direct mode."
+    required: false
+  value:
+    description: "New value to write — applied to every file in `file`."
+    required: false
+  mode:
+    description: "Update mode: image | key | marker (direct mode only)"
+    required: false
+    default: "image"
+  key:
+    description: "Dot-notation key path (direct mode, required when mode=key)"
+    required: false
+  deploy:
+    description: "direct mode: auto | pr"
+    required: false
+    default: "auto"
+  branch:
+    description: "PR branch name (direct mode, required when deploy=pr)"
+    required: false
+  commit_message:
+    description: "Override the commit message (direct mode)"
+    required: false
+  auto_merge:
+    description: "Enable auto-merge on the deploy PR (direct mode, deploy=pr)"
+    required: false
+    default: "false"
+  merge_method:
+    description: "MERGE | SQUASH | REBASE (direct mode, deploy=pr)"
+    required: false
+    default: "SQUASH"
+
+  token:
+    description: "GitHub token with contents:write and pull-requests:write"
+    required: true
+  git_user_name:
+    description: "Git commit author name"
+    required: false
+    default: "github-actions[bot]"
+  git_user_email:
+    description: "Git commit author email"
+    required: false
+    default: "github-actions[bot]@users.noreply.github.com"
+  dry_run:
+    description: "Print plan without pushing or creating PRs"
+    required: false
+    default: "false"
+
+outputs:
+  deployed:
+    description: "'true' if at least one environment was updated"
+  environments:
+    description: "JSON array of environment names that were deployed (matrix mode)"
+  commit_sha:
+    description: "SHA of the deploy commit (auto mode) or empty (PR mode)"
+  pr_urls:
+    description: "JSON array of PR URLs opened/updated"
+  changed_files:
+    description: "Newline-separated list of updated values files"
+  diff:
+    description: "Summary of changes: file: old → new (one per line)"
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0' # x-release-please-version
+  args: [rollout]
+
+branding:
+  icon: 'upload-cloud'
+  color: 'blue'

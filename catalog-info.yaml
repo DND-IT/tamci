@@ -1,0 +1,30 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tamci
+  namespace: dnd-it
+  description: Tamedia CI CLI — unified replacement for the six Go-based action-* GitHub Actions.
+  annotations:
+    github.com/project-slug: DND-IT/tamci
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - cli
+    - github-action
+    - golang
+  links:
+    - url: https://github.com/DND-IT/tamci
+      title: GitHub Repository
+      icon: github
+    - url: https://github.com/DND-IT/tamci/issues
+      title: GitHub Issues
+      icon: bug_report
+    - url: https://github.com/DND-IT/tamci/pulls
+      title: GitHub Pull Requests
+      icon: assignment
+    - url: https://github.com/DND-IT/tamci/releases
+      title: GitHub Releases
+      icon: release
+spec:
+  type: tool
+  lifecycle: production
+  owner: group:default/dai

@@ -1,0 +1,44 @@
+name: 'action-lock'
+description: 'GitHub Action for distributed mutex locking using git refs. Acquire and release locks to serialize workflow jobs.'
+
+inputs:
+  action:
+    description: 'Lock action: acquire or release'
+    required: true
+  lock_name:
+    description: 'Name of the lock (used as the ref name under refs/locks/)'
+    required: true
+  timeout:
+    description: 'Maximum time in seconds to wait for lock acquisition'
+    required: false
+    default: '300'
+  poll_interval:
+    description: 'Seconds between lock acquisition attempts'
+    required: false
+    default: '10'
+  stale_threshold:
+    description: 'Seconds after which a lock is considered stale and can be force-acquired. Set to 0 to disable.'
+    required: false
+    default: '600'
+  fail_on_timeout:
+    description: 'Fail the step if the lock cannot be acquired within timeout.'
+    required: false
+    default: 'true'
+  token:
+    description: 'GitHub token with contents:write permission'
+    required: true
+
+outputs:
+  acquired:
+    description: 'Whether the lock was successfully acquired (true/false)'
+  lock_ref:
+    description: 'The full git ref used for the lock'
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0' # x-release-please-version
+  args: [lock]
+
+branding:
+  icon: 'lock'
+  color: 'orange'

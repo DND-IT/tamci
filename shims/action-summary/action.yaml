@@ -1,0 +1,32 @@
+name: 'action-summary'
+description: 'Reads and summarizes a string input, truncates if too long, and writes to GitHub summary.'
+author: 'group:default/dai'
+
+inputs:
+  path:
+    description: 'The path to the file containing text to be summarized.'
+    required: false
+  string:
+    description: 'The input string to be summarized.'
+    required: false
+  max_size:
+    description: 'Maximum size for the output in bytes. 1MB is the default limit for Github Job summaries.'
+    required: false
+    default: '1048576'
+  summary_header:
+    description: 'The header for the summary output.'
+    required: false
+    default: 'Summary'
+  data_type:
+    description: 'The type of data to be assigned to markdown code block.'
+    required: false
+    default: ''
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0' # x-release-please-version
+  args: [summary]
+
+branding:
+  icon: 'file-text'
+  color: 'blue'

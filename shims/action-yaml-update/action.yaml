@@ -1,0 +1,114 @@
+name: 'action-yaml-update'
+description: 'Action to automate updating YAML files with format preservation. Supports Helm values and Kustomize configs.'
+author: 'group:default/dai'
+
+inputs:
+  files:
+    description: 'Newline-separated YAML file paths to update'
+    required: false
+  files_from:
+    description: 'Directory to recursively search for YAML files (.yml/.yaml)'
+    required: false
+  files_filter:
+    description: 'Filename filter for files_from discovery (e.g. values.yaml)'
+    required: false
+  mode:
+    description: 'Update mode: key (explicit paths), image (search by image name), or marker (comment-based)'
+    required: false
+    default: 'key'
+  marker:
+    description: 'Single comment marker to match (mode=marker, default: x-yaml-update)'
+    required: false
+    default: 'x-yaml-update'
+  markers:
+    description: 'Newline-separated markers with corresponding values (mode=marker)'
+    required: false
+  keys:
+    description: 'Newline-separated dot-notation key paths (mode=key)'
+    required: false
+  values:
+    description: 'Newline-separated values corresponding to keys (mode=key) or markers (mode=marker)'
+    required: false
+  value:
+    description: 'Single value applied to all keys (mode=key) or all marker matches (mode=marker)'
+    required: false
+  image_name:
+    description: 'Image name suffix to search for (mode=image)'
+    required: false
+  image_tag:
+    description: 'New tag value (mode=image)'
+    required: false
+  create_pr:
+    description: 'Create a PR instead of direct commit'
+    required: false
+    default: 'true'
+  target_branch:
+    description: 'Base branch for PR or direct commit target'
+    required: false
+  pr_branch:
+    description: 'Branch name for PR (auto-generated if empty)'
+    required: false
+  pr_title:
+    description: 'Pull request title'
+    required: false
+    default: 'chore: update YAML values'
+  pr_body:
+    description: 'Pull request body (auto-generated if empty)'
+    required: false
+  pr_labels:
+    description: 'Comma-separated labels to add to the PR'
+    required: false
+  pr_reviewers:
+    description: 'Comma-separated reviewer usernames'
+    required: false
+  commit_message:
+    description: 'Commit message'
+    required: false
+    default: 'chore: update YAML values'
+  token:
+    description: 'GitHub token for git push and API calls'
+    required: false
+    default: ${{ github.token }}
+  auto_merge:
+    description: 'Enable auto-merge on the PR'
+    required: false
+    default: 'false'
+  merge_method:
+    description: 'Merge method: MERGE, SQUASH, or REBASE'
+    required: false
+    default: 'SQUASH'
+  dry_run:
+    description: 'Preview changes without modifying anything'
+    required: false
+    default: 'false'
+  git_user_name:
+    description: 'Git committer name'
+    required: false
+    default: 'github-actions[bot]'
+  git_user_email:
+    description: 'Git committer email'
+    required: false
+    default: '41898282+github-actions[bot]@users.noreply.github.com'
+
+outputs:
+  changed:
+    description: 'true/false whether files were modified'
+  changed_files:
+    description: 'Newline-separated list of modified files'
+  pr_number:
+    description: 'PR number (empty if no PR created)'
+  pr_url:
+    description: 'PR URL (empty if no PR created)'
+  commit_sha:
+    description: 'SHA of the created commit'
+  diff:
+    description: 'Summary of changes'
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0' # x-release-please-version
+  args: [set]
+
+branding:
+  icon: 'edit'
+  color: 'blue'

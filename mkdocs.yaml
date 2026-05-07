@@ -1,0 +1,31 @@
+site_name: tamci
+site_description: Tamedia CI CLI — one Go binary, six subcommands, runs locally and in CI.
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Subcommands:
+      - config: subcommands/config.md
+      - rollout: subcommands/rollout.md
+      - release: subcommands/release.md
+      - lock: subcommands/lock.md
+      - "set (yaml-update)": subcommands/set.md
+      - summary: subcommands/summary.md
+  - Architecture: architecture.md
+  - Migration from action-*: migration.md
+  - Contributing: contributing.md
+
+plugins:
+  - techdocs-core
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true

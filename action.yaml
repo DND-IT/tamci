@@ -1,0 +1,18 @@
+name: 'tamci'
+description: 'Tamedia CI CLI — runs identically locally and inside GitHub Actions.'
+author: 'DND-IT'
+
+inputs:
+  args:
+    description: 'Arguments to pass to the tamci CLI (e.g. "summary --string ...")'
+    required: false
+
+runs:
+  using: docker
+  image: 'docker://ghcr.io/dnd-it/tamci:0.1.0' # x-release-please-version
+  args:
+    - ${{ inputs.args }}
+
+branding:
+  icon: 'box'
+  color: 'blue'
