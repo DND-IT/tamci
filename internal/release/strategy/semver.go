@@ -49,7 +49,7 @@ func (s *Semver) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	if cliffConfig == "" {
 		// Use the built-in semver template which has filter_commits = true.
 		// This ensures non-conventional commits don't trigger a patch bump.
-		cliffConfig = findBuiltinConfig("semver")
+		cliffConfig = FindBuiltinConfig("semver")
 	}
 	if cliffConfig != "" {
 		args = append([]string{"--config", cliffConfig}, args...)
@@ -60,12 +60,12 @@ func (s *Semver) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	// --tag-pattern alone correctly scopes version boundary detection.
 	// --include-path is only used in changelog.Generate() for release notes.
 	//
-	// Always pass --tag-pattern to scope git-cliff's version boundary detection.
-	// Without this, git-cliff sees ALL tags and may use unrelated ones (e.g.
-	// go-service-v1.13.0) as the latest version when releasing python-api.
+	// Always pass --tag-pattern to scope git-cliff's version boundary detection
+	// to this service's tags only; otherwise git-cliff may use unrelated tags
+	// (e.g. go-service-v1.13.0) as the latest version when releasing python-api.
 	if cfg.CurrentPackage != nil && cfg.CurrentPackage.TagPattern != "" {
 		args = append(args, "--tag-pattern", cfg.CurrentPackage.TagPattern)
-	} else if cfg.TagPrefix != "" {
+	} else {
 		args = append(args, "--tag-pattern", TagPatternRegex(cfg.TagPrefix, "semver"))
 	}
 
@@ -105,12 +105,12 @@ func (s *Semver) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	}, nil
 }
 
-// findBuiltinConfig locates a built-in cliff template by strategy name.
+// FindBuiltinConfig locates a built-in cliff template by strategy name.
 // Search order:
 //  1. CLIFF_TEMPLATES_DIR env var (for local dev/testing)
 //  2. /cliff-templates/ (Docker image)
 //  3. ./cliff-templates/ (run from repo root)
-func findBuiltinConfig(strategy string) string {
+func FindBuiltinConfig(strategy string) string {
 	file := strategy + ".toml"
 	if dir := os.Getenv("CLIFF_TEMPLATES_DIR"); dir != "" {
 		p := dir + "/" + file

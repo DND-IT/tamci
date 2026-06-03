@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dnd-it/tamci/internal/release/config"
+	"github.com/dnd-it/tamci/internal/release/strategy"
 )
 
 const maxChangelogBytes = 100 * 1024 // 100KB — safety margin under GitHub's 125KB limit.
@@ -14,18 +15,23 @@ const maxChangelogBytes = 100 * 1024 // 100KB — safety margin under GitHub's 1
 // Generate produces a changelog using git-cliff.
 // Returns the changelog text, truncated to maxChangelogBytes if needed.
 func Generate(cfg config.Config) (string, error) {
-	// In PR mode no tag has been created yet, so --latest would resolve to the
-	// previous release's range. Use --unreleased to capture all commits since
-	// the last tag. In direct mode the tag is created before this runs, so
-	// --latest correctly resolves to the new release's range.
-	rangeFlag := "--latest"
-	if cfg.ReleaseMode == "pr" {
-		rangeFlag = "--unreleased"
-	}
-	args := []string{rangeFlag, "--strip", "all"}
+	// Always use --unreleased. In both direct and pr modes the new tag is
+	// created *after* this function runs, so --latest would resolve to the
+	// previous tag and emit that release's range — one release behind.
+	// --unreleased captures every commit since the last tag, which is what
+	// the release notes should describe.
+	args := []string{"--unreleased", "--strip", "all"}
 
-	if cfg.CliffConfig != "" {
-		args = append([]string{"--config", cfg.CliffConfig}, args...)
+	cliffConfig := cfg.CliffConfig
+	if cliffConfig == "" {
+		// Without --config, git-cliff falls back to its embedded keepachangelog
+		// template (emoji-prefixed headers, "## [unreleased]" section). Pin to
+		// the built-in template for the active strategy so direct mode renders
+		// the same sections that drive version bumping.
+		cliffConfig = strategy.FindBuiltinConfig(cfg.VersionStrategy)
+	}
+	if cliffConfig != "" {
+		args = append([]string{"--config", cliffConfig}, args...)
 	}
 	if cfg.CurrentPackage != nil && cfg.CurrentPackage.Path != "" {
 		args = append(args, "--include-path", cfg.CurrentPackage.Path+"/**")

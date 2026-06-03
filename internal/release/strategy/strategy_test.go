@@ -199,7 +199,9 @@ func TestTagPatternRegex(t *testing.T) {
 	}{
 		{"python-api-v", "semver", `python-api-v\d+\.\d+\.\d+`},
 		{"v", "semver", `v\d+\.\d+\.\d+`},
+		{"", "semver", `\d+\.\d+\.\d+`},
 		{"ts-spa-", "calver", `ts-spa-\d{4}\.\d{2}\.\d{2}`},
+		{"", "calver", `\d{4}\.\d{2}\.\d{2}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.prefix+"/"+tt.strategy, func(t *testing.T) {
