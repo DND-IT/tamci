@@ -144,14 +144,7 @@ func rolloutModeLabel(mode string, v *viper.Viper) string {
 func splitLinesField(s string) []string { return parseLines(s) }
 
 func requireString(v *viper.Viper, key string) string {
-	val := v.GetString(key)
-	if val == "" {
-		// Surface a clean error from the inner call. The deployer used to os.Exit,
-		// but cobra/viper let us return an error instead.
-		// Note: we intentionally don't fail here — the inner Run/RunDirect
-		// will return its own validation error. This wrapper is a no-op.
-	}
-	return val
+	return v.GetString(key)
 }
 
 func stringOrDefault(v *viper.Viper, key, def string) string {

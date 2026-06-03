@@ -28,7 +28,7 @@ func TestParseConfigFile_UnsupportedExtension(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	_, _ = tmp.WriteString(`{"key": "value"}`)
 	_ = tmp.Close()
 
@@ -43,7 +43,7 @@ func TestParseConfigFile_NonObjectConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	_, _ = tmp.WriteString(`["not", "an", "object"]`)
 	_ = tmp.Close()
 
