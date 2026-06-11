@@ -1,59 +1,9 @@
 package changelog
 
 import (
-	"os/exec"
 	"strings"
 	"testing"
-
-	"github.com/dnd-it/tamci/internal/release/config"
 )
-
-// gitCliffAvailable returns true if git-cliff is on PATH.
-func gitCliffAvailable() bool {
-	_, err := exec.LookPath("git-cliff")
-	return err == nil
-}
-
-func TestGenerate_rangeFlag(t *testing.T) {
-	if !gitCliffAvailable() {
-		t.Skip("git-cliff not available")
-	}
-
-	tests := []struct {
-		name        string
-		releaseMode string
-		wantFlag    string
-	}{
-		{
-			name:        "direct mode uses --latest",
-			releaseMode: "direct",
-			wantFlag:    "--latest",
-		},
-		{
-			name:        "pr mode uses --unreleased",
-			releaseMode: "pr",
-			wantFlag:    "--unreleased",
-		},
-		{
-			name:        "empty mode (default direct) uses --latest",
-			releaseMode: "",
-			wantFlag:    "--latest",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.Config{ReleaseMode: tt.releaseMode}
-			rangeFlag := "--latest"
-			if cfg.ReleaseMode == "pr" {
-				rangeFlag = "--unreleased"
-			}
-			if rangeFlag != tt.wantFlag {
-				t.Errorf("rangeFlag = %q, want %q", rangeFlag, tt.wantFlag)
-			}
-		})
-	}
-}
 
 func TestTruncate(t *testing.T) {
 	t.Run("short text unchanged", func(t *testing.T) {
