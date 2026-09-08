@@ -70,14 +70,14 @@ func runRollout(v *viper.Viper) error {
 		mode = "direct"
 		result, err = rollout.RunDirect(rollout.DirectOptions{
 			Files:         files,
-			Value:         requireString(v, "value"),
+			Value:         v.GetString("value"),
 			Mode:          stringOrDefault(v, "mode", "image"),
 			Key:           v.GetString("key"),
 			Deploy:        stringOrDefault(v, "deploy", "auto"),
 			Branch:        v.GetString("branch"),
 			AutoMerge:     v.GetBool("auto-merge"),
 			MergeMethod:   stringOrDefault(v, "merge-method", "SQUASH"),
-			Token:         requireString(v, "token"),
+			Token:         v.GetString("token"),
 			GitUserName:   stringOrDefault(v, "git-user-name", "github-actions[bot]"),
 			GitUserEmail:  stringOrDefault(v, "git-user-email", "github-actions[bot]@users.noreply.github.com"),
 			DryRun:        v.GetBool("dry-run"),
@@ -89,10 +89,10 @@ func runRollout(v *viper.Viper) error {
 	} else {
 		mode = "matrix"
 		result, err = rollout.Run(rollout.Options{
-			Service:      requireString(v, "service"),
-			Version:      requireString(v, "version"),
-			SHA:          requireString(v, "sha"),
-			Token:        requireString(v, "token"),
+			Service:      v.GetString("service"),
+			Version:      v.GetString("version"),
+			SHA:          v.GetString("sha"),
+			Token:        v.GetString("token"),
 			ConfigPath:   stringOrDefault(v, "config", ".github/matrix-config.yaml"),
 			ChartsDir:    stringOrDefault(v, "charts-dir", "deploy/charts"),
 			GitUserName:  stringOrDefault(v, "git-user-name", "github-actions[bot]"),
@@ -142,10 +142,6 @@ func rolloutModeLabel(mode string, v *viper.Viper) string {
 }
 
 func splitLinesField(s string) []string { return parseLines(s) }
-
-func requireString(v *viper.Viper, key string) string {
-	return v.GetString(key)
-}
 
 func stringOrDefault(v *viper.Viper, key, def string) string {
 	if val := v.GetString(key); val != "" {

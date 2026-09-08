@@ -18,18 +18,18 @@ import (
 
 // Options are inputs for matrix-mode runs.
 type Options struct {
-	Service      string
-	Version      string
-	SHA          string
-	Token        string
-	ConfigPath   string
-	ChartsDir    string
-	GitUserName  string
-	GitUserEmail string
-	DryRun       bool
-	Owner        string
-	Repo         string
-	WorkDir      string
+	Service       string
+	Version       string
+	SHA           string
+	Token         string
+	ConfigPath    string
+	ChartsDir     string
+	GitUserName   string
+	GitUserEmail  string
+	DryRun        bool
+	Owner         string
+	Repo          string
+	WorkDir       string
 	GitHubBaseURL string // test injection
 }
 
@@ -104,6 +104,9 @@ func RunDirect(opts DirectOptions) (*Result, error) {
 	}
 	if opts.Deploy == "pr" && opts.Branch == "" {
 		return nil, fmt.Errorf("direct mode: branch is required when deploy=pr")
+	}
+	if opts.Deploy == "pr" && opts.Token == "" && !opts.DryRun {
+		return nil, fmt.Errorf("direct mode: token is required when deploy=pr")
 	}
 
 	result := &Result{}
@@ -276,6 +279,12 @@ func valueOrMarkdown(s string) string {
 
 // Run executes the matrix-mode deploy flow.
 func Run(opts Options) (*Result, error) {
+	if opts.Service == "" {
+		return nil, fmt.Errorf("matrix mode: service is required")
+	}
+	if opts.Version == "" {
+		return nil, fmt.Errorf("matrix mode: version is required")
+	}
 	if opts.WorkDir == "" {
 		opts.WorkDir = "."
 	}
@@ -291,6 +300,9 @@ func Run(opts Options) (*Result, error) {
 
 	var autoEnvs, prEnvs []Environment
 	for _, e := range envs {
+		if e.Tag == "sha" && opts.SHA == "" {
+			return nil, fmt.Errorf("matrix mode: environment %s uses tag: sha but no sha was provided", e.Name)
+		}
 		switch e.Deploy {
 		case "auto":
 			autoEnvs = append(autoEnvs, e)
@@ -299,6 +311,9 @@ func Run(opts Options) (*Result, error) {
 		default:
 			slog.Warn("unknown deploy type, skipping", "environment", e.Name, "deploy", e.Deploy)
 		}
+	}
+	if len(prEnvs) > 0 && opts.Token == "" && !opts.DryRun {
+		return nil, fmt.Errorf("matrix mode: token is required for pr deploys")
 	}
 
 	result := &Result{}
