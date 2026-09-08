@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/DND-IT/tamci/compare/v0.2.0...v0.2.1) (2026-09-08)
+
+
+### Bug Fixes
+
+* **release:** keep runner-provided inputs over flag defaults ([#6](https://github.com/DND-IT/tamci/issues/6)) ([ce9062e](https://github.com/DND-IT/tamci/commit/ce9062e60e1dd3c991bfbbc64da8225faa5b523c))
+
 ## [0.2.0](https://github.com/DND-IT/tamci/compare/v0.1.1...v0.2.0) (2026-09-08)
 
 

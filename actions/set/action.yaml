@@ -106,7 +106,7 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/dnd-it/tamci:0.2.0' # x-release-please-version
+  image: 'docker://ghcr.io/dnd-it/tamci:0.2.1' # x-release-please-version
   args: [set]
 
 branding:
