@@ -256,6 +256,14 @@ func handleReleasePRMerge(cfg config.Config, prClient *releasepr.Client, result 
 		cl = ""
 	}
 
+	// A dry run must not consume the merged release PR: the plan step of a
+	// pipeline runs with dry-run before images are pushed, and the real
+	// publish step follows with dry-run off.
+	if cfg.DryRun {
+		log.Printf("dry-run: release PR merge detected, skipping tag creation and release (would tag: %s)", tag)
+		return setReleaseOutputs(releaseOutputs{version: version, changelog: cl, releaseMode: "pr", dryRun: true})
+	}
+
 	exists, err := gitutil.TagExists(tag)
 	if err != nil {
 		return err
