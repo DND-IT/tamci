@@ -11,7 +11,12 @@ import (
 var ErrShallowClone = fmt.Errorf("shallow clone detected: add 'fetch-depth: 0' to your actions/checkout step")
 
 func init() {
-	// Docker containers don't trust the mounted workspace.
+	// Docker containers don't trust the mounted workspace. Guard on
+	// GITHUB_ACTIONS so loading this package outside CI (local runs, tests)
+	// doesn't append to the developer's global git config.
+	if os.Getenv("GITHUB_ACTIONS") == "" {
+		return
+	}
 	workspace := os.Getenv("GITHUB_WORKSPACE")
 	if workspace == "" {
 		workspace = "/github/workspace"
