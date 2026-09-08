@@ -394,9 +394,15 @@ func boolStr(b bool) string {
 }
 
 // bridgeFlagsToEnv copies cobra/viper flag values into INPUT_<NAME> env vars
-// (with hyphens preserved) so config.Load() can read them.
+// (with hyphens preserved) so config.Load() can read them. Flag defaults are
+// skipped: Docker actions receive INPUT_RELEASE-MODE (hyphen kept), which
+// viper's kebab-to-snake lookup cannot see, and the default must not
+// overwrite the value the runner set.
 func bridgeFlagsToEnv(v *viper.Viper, keys ...string) {
 	for _, k := range keys {
+		if !v.IsSet(k) {
+			continue
+		}
 		if val := v.GetString(k); val != "" {
 			env := "INPUT_" + envify(k)
 			_ = os.Setenv(env, val)
