@@ -328,3 +328,48 @@ func TestPrettyJSON(t *testing.T) {
 		t.Errorf("non-JSON should pass through, got %q", got)
 	}
 }
+
+func TestRelease_BridgeKeepsRunnerInputsOverFlagDefaults(t *testing.T) {
+	// Docker actions receive hyphenated INPUT_* names; the flag defaults must
+	// not clobber them.
+	t.Setenv("INPUT_RELEASE-MODE", "pr")
+	t.Setenv("INPUT_VERSION-STRATEGY", "calver")
+	t.Setenv("INPUT_RELEASE_MODE", "")
+	t.Setenv("INPUT_VERSION_STRATEGY", "")
+
+	cmd := newReleaseCmd()
+	if err := cmd.ParseFlags(nil); err != nil {
+		t.Fatal(err)
+	}
+	v := newViper()
+	if err := bindFlags(cmd, v); err != nil {
+		t.Fatal(err)
+	}
+	bridgeFlagsToEnv(v, "version-strategy", "release-mode")
+
+	if got := os.Getenv("INPUT_RELEASE-MODE"); got != "pr" {
+		t.Errorf("INPUT_RELEASE-MODE = %q, want pr", got)
+	}
+	if got := os.Getenv("INPUT_VERSION-STRATEGY"); got != "calver" {
+		t.Errorf("INPUT_VERSION-STRATEGY = %q, want calver", got)
+	}
+}
+
+func TestRelease_BridgeExplicitFlag(t *testing.T) {
+	t.Setenv("INPUT_RELEASE-MODE", "")
+	t.Setenv("INPUT_RELEASE_MODE", "")
+
+	cmd := newReleaseCmd()
+	if err := cmd.ParseFlags([]string{"--release-mode", "pr"}); err != nil {
+		t.Fatal(err)
+	}
+	v := newViper()
+	if err := bindFlags(cmd, v); err != nil {
+		t.Fatal(err)
+	}
+	bridgeFlagsToEnv(v, "release-mode")
+
+	if got := os.Getenv("INPUT_RELEASE-MODE"); got != "pr" {
+		t.Errorf("INPUT_RELEASE-MODE = %q, want pr", got)
+	}
+}
