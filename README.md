@@ -5,8 +5,8 @@ Tamedia CI CLI — one Go binary, six subcommands, runs identically locally and 
 `tamci` consolidates six previously separate Go-based GitHub Actions
 (`action-config`, `action-deployer`, `action-releaser`, `action-lock`,
 `action-summary`, `action-yaml-update`) into a single executable. Each
-former action becomes a thin `action.yaml` shim that delegates to the
-unified Docker image.
+former action ships as a thin `action.yaml` under `actions/<name>` that
+delegates to the unified Docker image.
 
 ## Subcommands
 
@@ -36,19 +36,21 @@ Same code path, three entry points (CLI flag, env var, action input).
 
 ### In GitHub Actions
 
-Each former action is a thin shim that calls one tamci subcommand:
+Each subcommand ships as an action inside this repo under `actions/<name>`,
+so consumers reference `DND-IT/tamci/actions/<name>`:
 
 ```yaml
-- uses: dnd-it/action-rollout@v1
+- uses: DND-IT/tamci/actions/rollout@v0
   with:
     service: api
     version: 1.4.0
     token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Under the hood the shim runs `docker://ghcr.io/dnd-it/tamci:X.Y.Z` with
+Each action runs `docker://ghcr.io/dnd-it/tamci:X.Y.Z` with
 `args: [rollout]` and the GitHub runner sets `INPUT_*` env vars from the
-inputs block automatically.
+inputs block automatically. The former `action-*` repos are deprecated;
+the mapping is in [docs/migration.md](docs/migration.md).
 
 ## Repo layout
 
@@ -67,7 +69,7 @@ tamci/
 │   ├── summary/              # JSON deserialization + summary formatting
 │   └── yamlx/                # format-preserving YAML edit engine
 ├── docs/                     # TechDocs source (mkdocs + techdocs-core)
-├── shims/                    # proposed action.yaml for each consumer repo
+├── actions/                  # one action.yaml per subcommand (uses: DND-IT/tamci/actions/<name>)
 ├── action.yaml               # top-level wrapper action
 ├── catalog-info.yaml         # Backstage catalog entry
 ├── mkdocs.yaml               # TechDocs config

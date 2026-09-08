@@ -36,7 +36,7 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/dnd-it/tamci:1.0.0'
+  image: 'docker://ghcr.io/dnd-it/tamci:0.1.1' # x-release-please-version
   args: [lock]
 
 branding:

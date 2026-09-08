@@ -9,7 +9,13 @@
       "include-component-in-tag": false,
       "include-v-in-tag": true,
       "extra-files": [
-        "action.yaml"
+        "action.yaml",
+        "actions/config/action.yaml",
+        "actions/lock/action.yaml",
+        "actions/release/action.yaml",
+        "actions/rollout/action.yaml",
+        "actions/set/action.yaml",
+        "actions/summary/action.yaml"
       ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },

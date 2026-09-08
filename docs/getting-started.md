@@ -11,7 +11,8 @@ tamci --help
 
 ## Use as a Docker action
 
-Each consumer repo has a thin `action.yaml` shim that delegates to the
+Each subcommand has a thin `action.yaml` under `actions/<name>` in this
+repo (`uses: DND-IT/tamci/actions/<name>@v0`) that delegates to the
 unified `tamci` image. The runner sets `INPUT_*` for every input block
 field automatically — no `env:` plumbing is needed in the workflow.
 

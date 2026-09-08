@@ -21,8 +21,8 @@ client, its own `INPUT_*` parsing. Two of them — `action-deployer` and
 editors. Across the six repos, ~1,500 lines of overlapping code.
 
 `tamci` consolidates them into a single binary with shared internals.
-Each former action becomes a thin `action.yaml` shim that delegates to
-the unified Docker image.
+Each former action ships as a thin `action.yaml` under `actions/<name>`
+in this repo that delegates to the unified Docker image.
 
 ## Subcommand surface
 
