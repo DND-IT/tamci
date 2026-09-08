@@ -9,7 +9,8 @@ import (
 	"github.com/dnd-it/tamci/internal/release/config"
 )
 
-// CalVer implements VersionStrategy with YYYY.MM.DD[.N] format (UTC).
+// CalVer implements VersionStrategy with YYYY.MM.N format (UTC), where N is an
+// incrementing counter that starts at 0 and resets each month.
 type CalVer struct {
 	// Now allows injecting time for testing. If nil, uses time.Now().UTC().
 	Now func() time.Time
@@ -27,29 +28,25 @@ func (d *CalVer) now() time.Time {
 
 func (d *CalVer) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	prefix := cfg.TagPrefix
-	today := d.now().Format("2006.01.02")
+	month := d.now().Format("2006.01")
 
-	// Find all tags matching today's date.
-	var todayCount int
+	// Find the highest counter already used this month so the next release
+	// continues the sequence. The counter resets when the month rolls over.
+	maxCounter := -1
 	var latestTag string
 	for _, t := range tags {
 		v := strings.TrimPrefix(t, prefix)
-		if v == today || strings.HasPrefix(v, today+".") {
-			todayCount++
+		if m, counter, err := ParseCalVerVersion(v); err == nil && m == month {
+			if counter > maxCounter {
+				maxCounter = counter
+			}
 		}
 		if latestTag == "" && strings.HasPrefix(t, prefix) {
 			latestTag = t
 		}
 	}
 
-	var version string
-	if todayCount == 0 {
-		// First release of the day — no suffix.
-		version = today
-	} else {
-		// Subsequent releases: .2, .3, etc.
-		version = fmt.Sprintf("%s.%d", today, todayCount+1)
-	}
+	version := fmt.Sprintf("%s.%d", month, maxCounter+1)
 
 	return Result{
 		Version:         version,
@@ -57,18 +54,17 @@ func (d *CalVer) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	}, nil
 }
 
-// ParseCalVerVersion extracts the date and counter from a calver version string.
-func ParseCalVerVersion(version string) (date string, counter int, err error) {
-	parts := strings.SplitN(version, ".", 4) // YYYY.MM.DD[.N]
+// ParseCalVerVersion extracts the month (YYYY.MM) and counter from a calver
+// version string of the form YYYY.MM.N.
+func ParseCalVerVersion(version string) (month string, counter int, err error) {
+	parts := strings.SplitN(version, ".", 3) // YYYY.MM.N
 	if len(parts) < 3 {
 		return "", 0, fmt.Errorf("invalid calver version %q", version)
 	}
-	date = strings.Join(parts[:3], ".")
-	if len(parts) == 4 {
-		counter, err = strconv.Atoi(parts[3])
-		if err != nil {
-			return "", 0, fmt.Errorf("invalid counter in %q: %w", version, err)
-		}
+	month = parts[0] + "." + parts[1]
+	counter, err = strconv.Atoi(parts[2])
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid counter in %q: %w", version, err)
 	}
-	return date, counter, nil
+	return month, counter, nil
 }

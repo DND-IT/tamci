@@ -44,7 +44,7 @@ func New(name string) (VersionStrategy, error) {
 // Version format regexes — used to validate the version part after stripping the tag prefix.
 var (
 	semverVersionRe = regexp.MustCompile(`^\d+\.\d+\.\d+`)
-	dateVersionRe   = regexp.MustCompile(`^\d{4}\.\d{2}\.\d{2}(\.\d+)?$`)
+	calverVersionRe = regexp.MustCompile(`^\d{4}\.\d{2}\.\d+$`)
 )
 
 // IsValidVersion checks whether a version string (prefix already stripped)
@@ -54,7 +54,7 @@ func IsValidVersion(strategyName, version string) bool {
 	case "semver":
 		return semverVersionRe.MatchString(version)
 	case "calver":
-		return dateVersionRe.MatchString(version)
+		return calverVersionRe.MatchString(version)
 	default:
 		return false
 	}
@@ -87,7 +87,7 @@ func TagPatternRegex(prefix, strategyName string) string {
 	case "semver":
 		return escaped + `\d+\.\d+\.\d+`
 	case "calver":
-		return escaped + `\d{4}\.\d{2}\.\d{2}`
+		return escaped + `\d{4}\.\d{2}\.\d+`
 	default:
 		return escaped + `.*`
 	}
