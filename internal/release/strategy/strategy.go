@@ -80,9 +80,11 @@ func FilterTags(tags []string, prefix, strategyName string) []string {
 
 // TagPatternRegex returns a regex suitable for git-cliff's --tag-pattern flag.
 // It scopes git-cliff's version boundary detection to only tags belonging to
-// this service/prefix, preventing it from using unrelated tags.
+// this service/prefix, preventing it from using unrelated tags. The pattern
+// is anchored at the start so a short prefix such as "v" cannot match inside
+// another service's tag such as "go-service-v1.2.3".
 func TagPatternRegex(prefix, strategyName string) string {
-	escaped := regexp.QuoteMeta(prefix)
+	escaped := "^" + regexp.QuoteMeta(prefix)
 	switch strategyName {
 	case "semver":
 		return escaped + `\d+\.\d+\.\d+`

@@ -1,6 +1,7 @@
 package strategy
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
@@ -205,11 +206,11 @@ func TestTagPatternRegex(t *testing.T) {
 		strategy string
 		wantRe   string
 	}{
-		{"python-api-v", "semver", `python-api-v\d+\.\d+\.\d+`},
-		{"v", "semver", `v\d+\.\d+\.\d+`},
-		{"", "semver", `\d+\.\d+\.\d+`},
-		{"ts-spa-", "calver", `ts-spa-\d{4}\.\d{2}\.\d+`},
-		{"", "calver", `\d{4}\.\d{2}\.\d+`},
+		{"python-api-v", "semver", `^python-api-v\d+\.\d+\.\d+`},
+		{"v", "semver", `^v\d+\.\d+\.\d+`},
+		{"", "semver", `^\d+\.\d+\.\d+`},
+		{"ts-spa-", "calver", `^ts-spa-\d{4}\.\d{2}\.\d+`},
+		{"", "calver", `^\d{4}\.\d{2}\.\d+`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.prefix+"/"+tt.strategy, func(t *testing.T) {
@@ -254,5 +255,15 @@ func TestParseCalVerVersion(t *testing.T) {
 				t.Errorf("counter = %d, want %d", counter, tt.wantCounter)
 			}
 		})
+	}
+}
+
+func TestTagPatternRegex_DoesNotMatchForeignPrefix(t *testing.T) {
+	re := regexp.MustCompile(TagPatternRegex("v", "semver"))
+	if re.MatchString("go-service-v1.16.1") {
+		t.Fatal("pattern for prefix v must not match go-service-v1.16.1")
+	}
+	if !re.MatchString("v0.2.1") {
+		t.Fatal("pattern for prefix v must match v0.2.1")
 	}
 }
