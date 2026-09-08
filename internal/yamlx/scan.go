@@ -2,7 +2,6 @@ package yamlx
 
 import (
 	"fmt"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -137,7 +136,3 @@ func walk(n *yaml.Node, fn func(*yaml.Node)) {
 		walk(child, fn)
 	}
 }
-
-// trimSpaceLower lower-cases and trims a string. Unused for now but kept for
-// future case-insensitive marker matching.
-var _ = strings.ToLower

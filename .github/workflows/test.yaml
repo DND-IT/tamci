@@ -84,6 +84,80 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  smoke:
+    runs-on: ubuntu-latest
+    name: smoke
+    needs: docker
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      # The runner pulls docker:// images without credentials, so this job
+      # needs the tamci package to be public.
+      - name: point the actions at the PR image
+        run: sed -i "s|ghcr.io/dnd-it/tamci:[^']*|ghcr.io/dnd-it/tamci:pr-${{ github.event.number }}|" action.yaml actions/*/action.yaml
+
+      - id: config
+        uses: ./actions/config
+        with:
+          config_path: internal/matrix/testdata/valid-list-config.yml
+      - name: assert config output
+        env:
+          MATRIX: ${{ steps.config.outputs.matrix }}
+        run: |
+          echo "$MATRIX" | jq .
+          echo "$MATRIX" | jq -e 'type == "array" and length > 0' > /dev/null
+
+      - name: create rollout fixture
+        run: |
+          mkdir -p fixture
+          printf 'api:\n  image:\n    repository: example/api\n    tag: 1.0.0\n' > fixture/values.yaml
+      - id: rollout
+        uses: ./actions/rollout
+        with:
+          file: fixture/values.yaml
+          mode: key
+          key: api.image.tag
+          value: 2.0.0
+          token: ${{ github.token }}
+          dry_run: "true"
+      - name: assert rollout output
+        env:
+          DIFF: ${{ steps.rollout.outputs.diff }}
+          FILES: ${{ steps.rollout.outputs.changed_files }}
+        run: |
+          echo "diff: $DIFF"
+          echo "changed_files: $FILES"
+          echo "$FILES" | grep -q 'fixture/values.yaml'
+          echo "$DIFF" | grep -q '2.0.0'
+
+      - id: release
+        uses: ./actions/release
+        with:
+          version-strategy: semver
+          tag-prefix: v
+          dry-run: "true"
+          github-token: ${{ github.token }}
+      - name: assert release output
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          SKIPPED: ${{ steps.release.outputs.skipped }}
+          DRY_RUN: ${{ steps.release.outputs.dry-run }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          echo "version=$VERSION skipped=$SKIPPED dry-run=$DRY_RUN tag=$TAG"
+          [ "$DRY_RUN" = "true" ]
+          [ -z "$TAG" ]
+          [ -n "$VERSION" ] || [ "$SKIPPED" = "true" ]
+
+      - uses: ./actions/summary
+        with:
+          string: '{"smoke":"ok"}'
+          data_type: json
+
   cleanup:
     runs-on: ubuntu-latest
     name: cleanup pr image

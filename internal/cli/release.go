@@ -357,9 +357,14 @@ func setReleaseOutputs(o releaseOutputs) error {
 	if o.releasePRNumber > 0 {
 		prNumberStr = strconv.Itoa(o.releasePRNumber)
 	}
+	// The multiline `changelog` output is written last, after every scalar
+	// output. A multiline value uses a heredoc in $GITHUB_OUTPUT; if that value
+	// were malformed, GitHub's parser would swallow every line written after it
+	// into the changelog. Writing it last guarantees consumer-critical scalars
+	// like `release-published` are parsed correctly regardless of changelog
+	// content, so gated deploys can't be silently skipped after a real release.
 	pairs := []struct{ name, value string }{
 		{"version", o.version},
-		{"changelog", o.changelog},
 		{"tag", o.tag},
 		{"release-url", o.releaseURL},
 		{"pr-url", o.prURL},
@@ -371,6 +376,7 @@ func setReleaseOutputs(o releaseOutputs) error {
 		{"release-pr-url", o.prURL},
 		{"release-pr-number", prNumberStr},
 		{"pr-created", boolStr(o.prCreated)},
+		{"changelog", o.changelog},
 	}
 	for _, p := range pairs {
 		if err := gha.SetOutput(p.name, p.value); err != nil {

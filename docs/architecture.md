@@ -79,4 +79,4 @@ stdout.
   When refactoring, keep these green — they encode behavior contracts.
 - **Subcommands are isolated.** A bug in `release` doesn't touch
   `summary` or `lock`. The cost is one binary release blocking all six,
-  but each shim still pins a specific tamci tag.
+  but consumers still pin a specific tamci tag.

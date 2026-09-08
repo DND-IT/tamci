@@ -46,27 +46,33 @@ func TestCalVer_NextVersion(t *testing.T) {
 		wantPre string
 	}{
 		{
-			name:    "first release of the day",
-			tags:    []string{"v2026.03.24"},
-			want:    "2026.03.25",
-			wantPre: "v2026.03.24",
+			name:    "first release of the month",
+			tags:    []string{"v2026.02.4"},
+			want:    "2026.03.0",
+			wantPre: "v2026.02.4",
 		},
 		{
-			name:    "second release same day",
-			tags:    []string{"v2026.03.25", "v2026.03.24"},
-			want:    "2026.03.25.2",
-			wantPre: "v2026.03.25",
+			name:    "second release same month",
+			tags:    []string{"v2026.03.0", "v2026.02.4"},
+			want:    "2026.03.1",
+			wantPre: "v2026.03.0",
 		},
 		{
-			name:    "third release same day",
-			tags:    []string{"v2026.03.25.2", "v2026.03.25", "v2026.03.24"},
-			want:    "2026.03.25.3",
-			wantPre: "v2026.03.25.2",
+			name:    "third release same month",
+			tags:    []string{"v2026.03.1", "v2026.03.0", "v2026.02.4"},
+			want:    "2026.03.2",
+			wantPre: "v2026.03.1",
+		},
+		{
+			name:    "counter continues past gaps",
+			tags:    []string{"v2026.03.5", "v2026.03.2"},
+			want:    "2026.03.6",
+			wantPre: "v2026.03.5",
 		},
 		{
 			name:    "bootstrap - no tags",
 			tags:    nil,
-			want:    "2026.03.25",
+			want:    "2026.03.0",
 			wantPre: "",
 		},
 	}
@@ -122,10 +128,12 @@ func TestIsValidVersion(t *testing.T) {
 		{"semver", "", false},
 
 		// CalVer valid
-		{"calver", "2026.03.25", true},
-		{"calver", "2026.03.25.2", true},
+		{"calver", "2026.03.0", true},
+		{"calver", "2026.03.2", true},
+		{"calver", "2026.03.10", true},
 		// CalVer invalid
 		{"calver", "1.2.3", false},
+		{"calver", "2026.03", false},
 		{"calver", "go-service-v1.13.0", false},
 		{"calver", "", false},
 	}
@@ -163,10 +171,10 @@ func TestFilterTags(t *testing.T) {
 		},
 		{
 			name:     "calver filters non-date versions",
-			tags:     []string{"ts-spa-2026.03.31", "ts-spa-go-service-v1.13.0"},
+			tags:     []string{"ts-spa-2026.03.4", "ts-spa-go-service-v1.13.0"},
 			prefix:   "ts-spa-",
 			strategy: "calver",
-			want:     []string{"ts-spa-2026.03.31"},
+			want:     []string{"ts-spa-2026.03.4"},
 		},
 		{
 			name:     "returns nil when no tags match",
@@ -200,8 +208,8 @@ func TestTagPatternRegex(t *testing.T) {
 		{"python-api-v", "semver", `python-api-v\d+\.\d+\.\d+`},
 		{"v", "semver", `v\d+\.\d+\.\d+`},
 		{"", "semver", `\d+\.\d+\.\d+`},
-		{"ts-spa-", "calver", `ts-spa-\d{4}\.\d{2}\.\d{2}`},
-		{"", "calver", `\d{4}\.\d{2}\.\d{2}`},
+		{"ts-spa-", "calver", `ts-spa-\d{4}\.\d{2}\.\d+`},
+		{"", "calver", `\d{4}\.\d{2}\.\d+`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.prefix+"/"+tt.strategy, func(t *testing.T) {
@@ -216,19 +224,20 @@ func TestTagPatternRegex(t *testing.T) {
 func TestParseCalVerVersion(t *testing.T) {
 	tests := []struct {
 		input       string
-		wantDate    string
+		wantMonth   string
 		wantCounter int
 		wantErr     bool
 	}{
-		{"2026.03.25", "2026.03.25", 0, false},
-		{"2026.03.25.2", "2026.03.25", 2, false},
-		{"2026.03.25.10", "2026.03.25", 10, false},
+		{"2026.03.0", "2026.03", 0, false},
+		{"2026.03.2", "2026.03", 2, false},
+		{"2026.03.10", "2026.03", 10, false},
 		{"bad", "", 0, true},
-		{"2026.03.25.abc", "", 0, true},
+		{"2026.03", "", 0, true},
+		{"2026.03.abc", "", 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			date, counter, err := ParseCalVerVersion(tt.input)
+			month, counter, err := ParseCalVerVersion(tt.input)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error")
@@ -238,8 +247,8 @@ func TestParseCalVerVersion(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if date != tt.wantDate {
-				t.Errorf("date = %q, want %q", date, tt.wantDate)
+			if month != tt.wantMonth {
+				t.Errorf("month = %q, want %q", month, tt.wantMonth)
 			}
 			if counter != tt.wantCounter {
 				t.Errorf("counter = %d, want %d", counter, tt.wantCounter)

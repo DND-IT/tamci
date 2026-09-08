@@ -794,7 +794,7 @@ func TestExpand_DirectoryFieldWithBaseDir(t *testing.T) {
 	}
 	optsCfg := OptionsConfig{
 		Dimension: "service",
-		BaseDir:      "deploy",
+		BaseDir:   "deploy",
 	}
 
 	entries, err := Expand(dims, optsCfg, Options{})
@@ -939,7 +939,7 @@ func TestExpand_SortByCustom(t *testing.T) {
 	}
 	optsCfg := OptionsConfig{
 		Dimension: "service",
-		SortBy:       []string{"service", "environment"},
+		SortBy:    []string{"service", "environment"},
 	}
 
 	entries, err := Expand(dims, optsCfg, Options{})

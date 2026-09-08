@@ -11,8 +11,8 @@ became a subcommand: `config`, `rollout`, `release`, `lock`, `summary`,
 `set` (respectively).
 
 The CLI runs identically locally and inside GitHub Actions. CI invokes
-the same binary via Docker action shims that pass GitHub-Action inputs
-through as `INPUT_*` env vars.
+the same binary via the Docker actions under `actions/<name>`, which pass
+GitHub-Action inputs through as `INPUT_*` env vars.
 
 ## Layout
 
@@ -41,8 +41,10 @@ through as `INPUT_*` env vars.
 - `internal/release/{changelog,config,gitutil,publish,releasepr,strategy}/`
   — preserved subpackage structure from action-releaser to keep the
   test corpus intact.
-- `shims/` — proposed `action.yaml` files for the six consumer repos.
-  Not consumed by the build; just a planning artifact.
+- `actions/<name>/action.yaml` — the six consumer-facing actions
+  (`uses: DND-IT/tamci/actions/<name>@v0`). Each pins the image tag with
+  an `x-release-please-version` marker; release-please bumps them via
+  `extra-files`. Inputs and outputs mirror the legacy `action-*` repos.
 
 ## Conventions
 
@@ -77,14 +79,13 @@ go vet ./...
 go mod tidy
 ```
 
-## Migration status (as of 2026-05-05)
+## Migration status (as of 2026-09-08)
 
-The six consumer action repos (`dnd-it/action-config` etc.) still ship
-their own Go binaries. They will be converted to thin shims pointing at
-`ghcr.io/dnd-it/tamci:X.Y.Z` once tamci v1.0.0 is published. Two repos
-get renamed: `action-deployer` → `action-rollout`, `action-releaser` →
-`action-release`. GitHub redirects `uses:` references through repo
-renames, so existing consumers don't break.
+The six legacy action repos (`dnd-it/action-config` etc.) are deprecated
+and receive no further changes. Consumers move to
+`DND-IT/tamci/actions/<name>` at their own pace; the legacy tags keep
+working until the repos are archived. `fission-demo` is the first
+consumer.
 
 ## Things NOT to do
 

@@ -51,5 +51,6 @@ The subcommand naming convention: imperative verb (`rollout`, `set`,
 For now: tag manually, push, and the CI pipeline (TODO) builds the
 multi-arch image to `ghcr.io/dnd-it/tamci:<tag>`.
 
-Each consumer shim's `action.yaml` pins a specific tamci tag via the
-`# x-release-please-version` comment.
+Each `actions/<name>/action.yaml` pins a specific tamci tag via the
+`# x-release-please-version` comment and is listed under `extra-files`
+in `release-please-config.json`.

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
 // AppendStepSummary writes content to $GITHUB_STEP_SUMMARY. If the env var is
@@ -30,10 +29,35 @@ func SetOutput(key, value string) error {
 		return nil
 	}
 	if strings.Contains(value, "\n") {
-		delim := fmt.Sprintf("ghadelimiter_%d", time.Now().UnixNano())
+		// The heredoc delimiter must not appear as a line in the value,
+		// otherwise GitHub's parser ends the heredoc early and mis-reads
+		// everything after it. Extend the delimiter until it is unique so
+		// arbitrary content can never break parsing.
+		delim := heredocDelim(value)
 		return appendFile(path, fmt.Sprintf("%s<<%s\n%s\n%s\n", key, delim, value, delim))
 	}
 	return appendFile(path, fmt.Sprintf("%s=%s\n", key, value))
+}
+
+// heredocDelim returns a delimiter guaranteed not to appear as a line in value,
+// so the heredoc written to $GITHUB_OUTPUT is always well-formed.
+func heredocDelim(value string) string {
+	base := fmt.Sprintf("ghadelimiter_%d", os.Getpid())
+	delim := base
+	for i := 0; containsLine(value, delim); i++ {
+		delim = fmt.Sprintf("%s_%d", base, i)
+	}
+	return delim
+}
+
+// containsLine reports whether s has a line exactly equal to line.
+func containsLine(s, line string) bool {
+	for _, l := range strings.Split(s, "\n") {
+		if strings.TrimRight(l, "\r") == line {
+			return true
+		}
+	}
+	return false
 }
 
 // Notice emits a workflow `::notice::` annotation.

@@ -1,74 +1,47 @@
 # Migration from action-* repos
 
-The six former GitHub Actions are migrated one repo at a time. Each
-becomes a thin `action.yaml` shim that delegates to the unified
-`ghcr.io/dnd-it/tamci` Docker image.
+The six former GitHub Actions ship as actions inside this repo, one per
+subcommand under `actions/<name>`. Each is a thin `action.yaml` that
+runs the unified `ghcr.io/dnd-it/tamci` Docker image. The dedicated
+`action-*` repos are deprecated and receive no further changes.
 
 ## Per-action mapping
 
-| Old repo                     | New repo (if renamed)        | tamci subcommand   | Shim `args`     |
-|------------------------------|------------------------------|--------------------|-----------------|
-| `dnd-it/action-config`       | _(unchanged)_                | `tamci config`     | `[config]`      |
-| `dnd-it/action-deployer`     | `dnd-it/action-rollout`      | `tamci rollout`    | `[rollout]`     |
-| `dnd-it/action-releaser`     | `dnd-it/action-release`      | `tamci release`    | `[release]`     |
-| `dnd-it/action-lock`         | _(unchanged)_                | `tamci lock`       | `[lock]`        |
-| `dnd-it/action-summary`      | _(unchanged)_                | `tamci summary`    | `[summary]`     |
-| `dnd-it/action-yaml-update`  | _(unchanged)_                | `tamci set`        | `[set]`         |
+| Old `uses:`                     | New `uses:`                              | tamci subcommand |
+|---------------------------------|------------------------------------------|------------------|
+| `DND-IT/action-config@v3`       | `DND-IT/tamci/actions/config@v0`         | `tamci config`   |
+| `DND-IT/action-deployer@v0`     | `DND-IT/tamci/actions/rollout@v0`        | `tamci rollout`  |
+| `DND-IT/action-releaser@v0`     | `DND-IT/tamci/actions/release@v0`        | `tamci release`  |
+| `DND-IT/action-lock@v0`         | `DND-IT/tamci/actions/lock@v0`           | `tamci lock`     |
+| `DND-IT/action-summary@v2`      | `DND-IT/tamci/actions/summary@v0`        | `tamci summary`  |
+| `DND-IT/action-yaml-update@v0`  | `DND-IT/tamci/actions/set@v0`            | `tamci set`      |
 
-## What a shim looks like
+Inputs and outputs are unchanged, so a migration is a one-line edit of
+the `uses:` reference. The legacy tags keep working until the old repos
+are archived.
 
-After migration, each consumer repo collapses to roughly one file.
-Worked example for `action-rollout` (renamed from `action-deployer`):
+## What an action looks like
 
 ```yaml
-name: Rollout
-description: Atomically updates Helm values files (matrix or direct mode).
-author: DND-IT
-
-inputs:
-  service:
-    description: "Service name; must match a key under service: in matrix config"
-    required: false
-  # …all existing inputs, names UNCHANGED so consumers don't break…
-  token:
-    description: "GitHub token"
-    required: true
-
-outputs:
-  deployed:
-    description: "true if at least one environment was updated"
-  # …all existing outputs, UNCHANGED…
-
 runs:
   using: docker
-  image: docker://ghcr.io/dnd-it/tamci:1.0.0
+  image: 'docker://ghcr.io/dnd-it/tamci:0.1.1' # x-release-please-version
   args: [rollout]
-
-branding:
-  icon: upload-cloud
-  color: blue
 ```
 
-**Deleted from the shim repo:** `cmd/`, `internal/`, `go.mod`, `go.sum`,
-`Dockerfile`, all `*_test.go`, build artifacts.
+The image tag carries a release-please marker, and every
+`actions/*/action.yaml` is listed under `extra-files` in
+`release-please-config.json`, so each tamci release bumps all six
+actions in the same commit that creates the tag.
 
-**Kept:** `action.yaml`, slimmed `README.md`, `CHANGELOG.md`,
-`release-please-config.json`, `LICENSE`, `catalog-info.yaml`.
+## Prerequisites for consumers
 
-## Rollout order
-
-1. Publish `tamci@v1.0.0` (build + push to ghcr.io).
-2. For each consumer repo:
-    1. Replace contents with the shim.
-    2. Cut a final tag under the old repo name.
-    3. Rename the GitHub repo (`action-deployer` → `action-rollout`,
-       `action-releaser` → `action-release`); the four others keep their
-       names.
-    4. Cut `v1.0.0` under the new name.
-
-GitHub repo renames preserve `uses:` references via permanent redirects,
-so `dnd-it/action-deployer@v0.1.3` keeps resolving even after the repo
-moves to `action-rollout`. Consumers migrate at their own pace.
+- The `tamci` repo is private. Other repos in the organization can use
+  its actions because the repo's Actions access level is set to
+  "organization".
+- The `ghcr.io/dnd-it/tamci` package must be public. The runner pulls
+  `docker://` images before any step can log in, so a private package
+  fails with `unauthorized`.
 
 ## INPUT_* env-var passthrough
 
@@ -82,6 +55,6 @@ No `env:` block is needed in `action.yaml`.
 
 Before consolidation, you could ship `action-lock@0.1.1` without
 touching `action-deployer@0.1.3`. Under tamci, every fix is one
-binary release and every shim points at it. Each shim still pins a
-specific `tamci` tag, so consumers can stay on an older CLI during a
-regression — but you publish one binary, not six.
+binary release and every action points at it. Consumers still pin a
+specific tag, so they can stay on an older CLI during a regression, but
+you publish one binary, not six.
