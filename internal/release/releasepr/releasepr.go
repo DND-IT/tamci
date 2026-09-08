@@ -274,42 +274,36 @@ func (c *Client) createReleaseBranch(ctx context.Context, branchName, baseBranch
 		return fmt.Errorf("create branch %s: %w", branchName, err)
 	}
 
-	return c.commitReleaseFiles(ctx, branchName, baseBranch, manifestJSON, changelog, servicePath)
+	return c.commitReleaseFiles(ctx, branchName, baseSHA, baseBranch, manifestJSON, changelog, servicePath)
 }
 
 func (c *Client) updateReleaseBranch(ctx context.Context, branchName, baseBranch string, manifestJSON []byte, changelog, servicePath string) error {
-	// Force-update the branch to match the base without deleting it first.
-	// Deleting the branch would cause GitHub to auto-close any open PR whose
-	// head is that branch, even if a new branch with the same name is pushed
-	// moments later. A force UpdateRef avoids the deletion and keeps the PR open.
+	// Build the prepare-release commit directly on top of the base and
+	// force-update the branch to it in a single ref update.
+	//
+	// The branch must never point at the base SHA on its own. Two things close
+	// an open PR: deleting the head branch, and force-pushing the head to a
+	// commit with 0 commits ahead of the base (GitHub auto-closes empty PRs).
+	// The previous approach reset the branch to base and then committed on top,
+	// which momentarily left the head equal to base and let GitHub auto-close
+	// the release PR before the second push landed.
 	baseRef, _, err := c.gh.Git.GetRef(ctx, c.owner, c.repo, "refs/heads/"+baseBranch)
 	if err != nil {
 		return fmt.Errorf("get base ref %s: %w", baseBranch, err)
 	}
 	baseSHA := baseRef.GetObject().GetSHA()
 
-	_, _, err = c.gh.Git.UpdateRef(ctx, c.owner, c.repo, &github.Reference{
-		Ref:    github.Ptr("refs/heads/" + branchName),
-		Object: &github.GitObject{SHA: github.Ptr(baseSHA)},
-	}, true)
-	if err != nil {
-		return fmt.Errorf("force-update branch %s: %w", branchName, err)
-	}
-
-	return c.commitReleaseFiles(ctx, branchName, baseBranch, manifestJSON, changelog, servicePath)
+	return c.commitReleaseFiles(ctx, branchName, baseSHA, baseBranch, manifestJSON, changelog, servicePath)
 }
 
-// commitReleaseFiles commits the manifest and CHANGELOG.md to the release branch.
+// commitReleaseFiles builds a commit containing the manifest and CHANGELOG.md on
+// top of parentSHA and force-updates the release branch to point at it in a
+// single ref update. Committing on top of the base commit (rather than resetting
+// the branch to base first) keeps the branch head at least one commit ahead of
+// base at all times, so GitHub never auto-closes the open release PR.
 // The changelog is placed under servicePath to trigger path-filtered workflows.
 // Existing CHANGELOG.md content on the base branch is preserved by prepending.
-func (c *Client) commitReleaseFiles(ctx context.Context, branchName, baseBranch string, manifestJSON []byte, changelog, servicePath string) error {
-	// Get current commit on the branch.
-	ref, _, err := c.gh.Git.GetRef(ctx, c.owner, c.repo, "refs/heads/"+branchName)
-	if err != nil {
-		return fmt.Errorf("get branch ref: %w", err)
-	}
-	parentSHA := ref.GetObject().GetSHA()
-
+func (c *Client) commitReleaseFiles(ctx context.Context, branchName, parentSHA, baseBranch string, manifestJSON []byte, changelog, servicePath string) error {
 	// Get the tree of the parent commit.
 	parentCommit, _, err := c.gh.Git.GetCommit(ctx, c.owner, c.repo, parentSHA)
 	if err != nil {
@@ -452,7 +446,7 @@ func formatPRBody(version, changelog string) string {
 	b.WriteString("## Release `")
 	b.WriteString(version)
 	b.WriteString("`\n\n")
-	b.WriteString("This PR was created automatically by [action-releaser](https://github.com/dnd-it/action-releaser).\n")
+	b.WriteString("This PR was created automatically by [tamci](https://github.com/dnd-it/tamci).\n")
 	b.WriteString("Merge this PR to create the release.\n\n")
 	if changelog != "" {
 		b.WriteString("### Changelog\n\n")
