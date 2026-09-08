@@ -5,6 +5,7 @@ import (
 	"github.com/dnd-it/tamci/internal/release/config"
 	"github.com/dnd-it/tamci/internal/release/releasepr"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -377,6 +378,13 @@ func TestRelease_BridgeExplicitFlag(t *testing.T) {
 }
 
 func TestHandleReleasePRMerge_DryRunDoesNotRelease(t *testing.T) {
+	// Run inside a throwaway repo so a regression can never tag or push the
+	// real checkout.
+	repo := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	t.Chdir(repo)
 	out := filepath.Join(t.TempDir(), "output")
 	t.Setenv("GITHUB_OUTPUT", out)
 
