@@ -70,7 +70,7 @@ tamci/
 ├── shims/                    # proposed action.yaml for each consumer repo
 ├── action.yaml               # top-level wrapper action
 ├── catalog-info.yaml         # Backstage catalog entry
-├── mkdocs.yml                # TechDocs config
+├── mkdocs.yaml               # TechDocs config
 ├── Dockerfile                # multi-stage build, ENTRYPOINT /tamci
 └── go.mod
 ```
