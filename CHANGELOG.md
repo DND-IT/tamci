@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/DND-IT/tamci/compare/v0.1.1...v0.2.0) (2026-09-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* calver versions are YYYY.MM.N instead of YYYY.MM.DD[.N]. Repos already on calver will see existing day-based tags reinterpreted as counters for the transition month.
+
+### Features
+
+* release 0.2.0 with in-repo actions, calver YYYY.MM.N, and test coverage ([#4](https://github.com/DND-IT/tamci/issues/4)) ([cc6154b](https://github.com/DND-IT/tamci/commit/cc6154befcf0e34e283026e47112e49799aeb573))
+
 ## [0.1.1](https://github.com/DND-IT/tamci/compare/v0.1.0...v0.1.1) (2026-06-11)
 
 
