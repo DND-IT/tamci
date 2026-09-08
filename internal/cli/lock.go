@@ -108,9 +108,12 @@ func acquireLoop(client *lock.Client, lockName, sha string, v *viper.Viper) bool
 		if staleThreshold > 0 && err == nil && age > staleThreshold {
 			fmt.Printf("Stale lock detected (%ds old, threshold %ds), removing...\n", age, staleThreshold)
 			if err := client.Release(lockName); err != nil {
+				// Fall through to the deadline check and poll sleep so a
+				// persistently failing release can't spin without bound.
 				fmt.Fprintf(os.Stderr, "Warning: failed to remove stale lock: %v\n", err)
+			} else {
+				continue
 			}
-			continue
 		}
 
 		if time.Now().After(deadline) {
