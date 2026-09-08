@@ -2,6 +2,8 @@ package cli
 
 import (
 	"encoding/json"
+	"github.com/dnd-it/tamci/internal/release/config"
+	"github.com/dnd-it/tamci/internal/release/releasepr"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -371,5 +373,30 @@ func TestRelease_BridgeExplicitFlag(t *testing.T) {
 
 	if got := os.Getenv("INPUT_RELEASE-MODE"); got != "pr" {
 		t.Errorf("INPUT_RELEASE-MODE = %q, want pr", got)
+	}
+}
+
+func TestHandleReleasePRMerge_DryRunDoesNotRelease(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "output")
+	t.Setenv("GITHUB_OUTPUT", out)
+
+	cfg := config.Config{DryRun: true, ReleaseMode: "pr", TagPrefix: "go-service-v"}
+	result := &releasepr.MergeResult{Manifest: &releasepr.Manifest{Version: "1.16.1", Tag: "go-service-v1.16.1"}, PRNumber: 113}
+
+	// A nil PR client and no git repo: any attempt to tag, publish, or clean
+	// up would panic or fail, which is exactly what a dry run must avoid.
+	if err := handleReleasePRMerge(cfg, nil, result); err != nil {
+		t.Fatalf("handleReleasePRMerge: %v", err)
+	}
+
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	for _, want := range []string{"version=1.16.1\n", "dry-run=true\n", "release-published=false\n", "tag=\n"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("outputs missing %q:\n%s", want, got)
+		}
 	}
 }
