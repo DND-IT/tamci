@@ -99,11 +99,20 @@ func (c *Client) CreateOrUpdate(ctx context.Context, version, tag, changelog, ba
 	}
 	manifestJSON, _ := json.MarshalIndent(manifest, "", "  ")
 
+	// Always commit a CHANGELOG.md under servicePath, even with no entries:
+	// it is the only file in the release commit that lives under the service
+	// directory, so without it a path-filtered workflow never sees the merge
+	// and the pending release is never tagged.
+	fileChangelog := changelog
+	if fileChangelog == "" {
+		fileChangelog = fmt.Sprintf("## %s\n\nNo changelog entries.", version)
+	}
+
 	if existing != nil {
 		log.Printf("found existing release PR #%d, updating", existing.GetNumber())
 
 		// Force-update the release branch to current HEAD.
-		if err := c.updateReleaseBranch(ctx, branchName, baseBranch, manifestJSON, changelog, servicePath); err != nil {
+		if err := c.updateReleaseBranch(ctx, branchName, baseBranch, manifestJSON, fileChangelog, servicePath); err != nil {
 			return "", 0, false, fmt.Errorf("update release branch: %w", err)
 		}
 
@@ -123,7 +132,7 @@ func (c *Client) CreateOrUpdate(ctx context.Context, version, tag, changelog, ba
 
 	// No existing PR — create release branch and PR.
 	log.Printf("creating release branch %s", branchName)
-	if err := c.createReleaseBranch(ctx, branchName, baseBranch, manifestJSON, changelog, servicePath); err != nil {
+	if err := c.createReleaseBranch(ctx, branchName, baseBranch, manifestJSON, fileChangelog, servicePath); err != nil {
 		return "", 0, false, fmt.Errorf("create release branch: %w", err)
 	}
 

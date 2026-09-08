@@ -428,3 +428,81 @@ func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+func TestCreateOrUpdate_EmptyChangelogStillWritesServiceChangelog(t *testing.T) {
+	const (
+		baseSHA   = "basesha0000000000000000000000000000000000"
+		treeSHA   = "treesha0000000000000000000000000000000000"
+		commitSHA = "commitsha00000000000000000000000000000000"
+	)
+	var treePaths []string
+	var blobs []string
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(p, "/pulls"):
+			writeJSON(w, []map[string]any{{
+				"number":   7,
+				"html_url": "https://example.com/pull/7",
+				"labels":   []map[string]any{{"name": LabelPending}},
+			}})
+		case r.Method == http.MethodPatch && strings.HasSuffix(p, "/pulls/7"):
+			writeJSON(w, map[string]any{"number": 7})
+		case r.Method == http.MethodGet && strings.HasSuffix(p, "/git/ref/heads/main"):
+			writeJSON(w, map[string]any{"ref": "refs/heads/main", "object": map[string]any{"sha": baseSHA}})
+		case r.Method == http.MethodGet && strings.HasSuffix(p, "/git/commits/"+baseSHA):
+			writeJSON(w, map[string]any{"sha": baseSHA, "tree": map[string]any{"sha": treeSHA}})
+		case r.Method == http.MethodGet && strings.Contains(p, "/contents/"):
+			http.Error(w, "not found", http.StatusNotFound)
+		case r.Method == http.MethodPost && strings.HasSuffix(p, "/git/blobs"):
+			var body struct {
+				Content string `json:"content"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			blobs = append(blobs, body.Content)
+			writeJSON(w, map[string]any{"sha": "blobsha"})
+		case r.Method == http.MethodPost && strings.HasSuffix(p, "/git/trees"):
+			var body struct {
+				Tree []struct {
+					Path string `json:"path"`
+				} `json:"tree"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			for _, e := range body.Tree {
+				treePaths = append(treePaths, e.Path)
+			}
+			writeJSON(w, map[string]any{"sha": "newtree"})
+		case r.Method == http.MethodPost && strings.HasSuffix(p, "/git/commits"):
+			writeJSON(w, map[string]any{"sha": commitSHA})
+		case r.Method == http.MethodPatch && strings.Contains(p, "/git/ref"):
+			writeJSON(w, map[string]any{"ref": "refs/heads/release/go-service"})
+		default:
+			http.Error(w, "unexpected request "+r.Method+" "+p, http.StatusNotFound)
+		}
+	})
+
+	c, cleanup := newTestClient(t, mux)
+	defer cleanup()
+
+	_, _, _, err := c.CreateOrUpdate(context.Background(), "1.16.1", "go-service-v1.16.1", "", "main", "services/go-service")
+	if err != nil {
+		t.Fatalf("CreateOrUpdate: %v", err)
+	}
+
+	want := "services/go-service/CHANGELOG.md"
+	found := false
+	for _, p := range treePaths {
+		if p == want {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("release commit tree %v does not include %s; path-filtered workflows would not trigger on merge", treePaths, want)
+	}
+	joined := strings.Join(blobs, "\n")
+	if !strings.Contains(joined, "## 1.16.1") || !strings.Contains(joined, "No changelog entries") {
+		t.Errorf("changelog blob should carry a placeholder entry for the version, got:\n%s", joined)
+	}
+}
