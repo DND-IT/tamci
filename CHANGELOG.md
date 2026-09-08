@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/DND-IT/tamci/compare/v0.2.1...v0.2.2) (2026-09-08)
+
+
+### Bug Fixes
+
+* **release:** release PR merge fixes for path-filtered pipelines and dry-run ([#8](https://github.com/DND-IT/tamci/issues/8)) ([d9b0d91](https://github.com/DND-IT/tamci/commit/d9b0d916ff367eb5efefc3a6f1365dbd4b77c063))
+
 ## [0.2.1](https://github.com/DND-IT/tamci/compare/v0.2.0...v0.2.1) (2026-09-08)
 
 
