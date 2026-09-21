@@ -1,0 +1,33 @@
+name: 'action-token'
+description: 'Exchange the job OIDC token for a GitHub App installation token at an octo-sts token broker, and revoke it when the job ends.'
+author: 'group:default/dai'
+
+inputs:
+  url:
+    description: 'Broker exchange URL (https://<domain>/sts/exchange), the exchange_url output of terraform-aws-github-token-broker.'
+    required: true
+  identity:
+    description: 'Trust policy name; the broker reads .github/chainguard/<identity>.sts.yaml from the default branch of the scope repository.'
+    required: true
+  scope:
+    description: 'Repository (owner/repo) the token is issued for. Defaults to the current repository.'
+    required: false
+    default: ''
+  audience:
+    description: 'OIDC token audience. Defaults to the host of url; set it only for a trust policy with its own audience.'
+    required: false
+    default: ''
+
+outputs:
+  token:
+    description: 'GitHub App installation token, limited to the scope repository and the trust policy permissions. Revoked when the job ends.'
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:0.2.2' # x-release-please-version
+  args: [token]
+  post-entrypoint: /tamci
+
+branding:
+  icon: 'key'
+  color: 'blue'

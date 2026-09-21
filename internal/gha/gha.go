@@ -60,6 +60,19 @@ func containsLine(s, line string) bool {
 	return false
 }
 
+// SaveState appends key=value to $GITHUB_STATE. The runner exposes it to the
+// action's post step as the STATE_<key> env var.
+func SaveState(key, value string) error {
+	path := os.Getenv("GITHUB_STATE")
+	if path == "" {
+		return fmt.Errorf("GITHUB_STATE not set")
+	}
+	return appendFile(path, fmt.Sprintf("%s=%s\n", key, value))
+}
+
+// Mask emits an `::add-mask::` command so the runner redacts value from logs.
+func Mask(value string) { fmt.Printf("::add-mask::%s\n", value) }
+
 // Notice emits a workflow `::notice::` annotation.
 func Notice(msg string) { fmt.Printf("::notice::%s\n", msg) }
 

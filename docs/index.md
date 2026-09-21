@@ -1,6 +1,6 @@
 # tamci
 
-Tamedia CI CLI — one Go binary, six subcommands, runs identically locally
+Tamedia CI CLI — one Go binary, seven subcommands, runs identically locally
 and inside GitHub Actions.
 
 ## Why it exists
@@ -34,6 +34,7 @@ in this repo that delegates to the unified Docker image.
 | `tamci lock`      | action-lock          | git-ref mutex under `refs/locks/`           |
 | `tamci set`       | action-yaml-update   | Format-preserving YAML editor               |
 | `tamci summary`   | action-summary       | Append to GitHub step summary               |
+| `tamci token`     | _(new)_              | GitHub App token from an octo-sts broker    |
 
 See **[Subcommands](subcommands/config.md)** for per-command flags and
 behavior.
