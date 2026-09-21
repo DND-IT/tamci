@@ -70,8 +70,15 @@ func TestExchange_ClientErrorIsNotRetried(t *testing.T) {
 	}
 }
 
-func TestExchange_RetriesServerErrors(t *testing.T) {
+func noBackoff(t *testing.T) {
+	t.Helper()
+	orig := Backoff
 	Backoff = []time.Duration{0, 0}
+	t.Cleanup(func() { Backoff = orig })
+}
+
+func TestExchange_RetriesServerErrors(t *testing.T) {
+	noBackoff(t)
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
@@ -106,5 +113,93 @@ func TestRevoke(t *testing.T) {
 	}
 	if err := Revoke(srv.URL, "wrong"); err == nil {
 		t.Fatal("expected error for rejected revoke")
+	}
+}
+
+func closedServerURL() string {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	srv.Close()
+	return srv.URL
+}
+
+func respond(status int, body string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+}
+
+func TestIDToken_Errors(t *testing.T) {
+	forbidden := respond(http.StatusForbidden, "no id-token permission")
+	defer forbidden.Close()
+	empty := respond(http.StatusOK, `{}`)
+	defer empty.Close()
+
+	tests := []struct {
+		name, url, want string
+	}{
+		{"invalid URL", "http://[::1", "parse OIDC request URL"},
+		{"transport error", closedServerURL(), "request OIDC token"},
+		{"HTTP error", forbidden.URL, "HTTP 403: no id-token permission"},
+		{"no token", empty.URL, "no token in response"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := IDToken(tt.url, "req", "aud")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestExchange_Errors(t *testing.T) {
+	noBackoff(t)
+	empty := respond(http.StatusOK, `{"token":""}`)
+	defer empty.Close()
+	down := respond(http.StatusBadGateway, "down")
+	defer down.Close()
+
+	tests := []struct {
+		name, url, want string
+	}{
+		{"invalid URL", "http://[::1", "parse exchange URL"},
+		{"transport error after retries", closedServerURL(), "exchange:"},
+		{"server error after retries", down.URL, "HTTP 502: down"},
+		{"no token", empty.URL, "no token in response"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Exchange(tt.url, "oidc", "DND-IT/x", "release")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRevoke_Errors(t *testing.T) {
+	for name, apiURL := range map[string]string{
+		"invalid URL":     "http://[::1",
+		"transport error": closedServerURL(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := Revoke(apiURL, "ghs_x"); err == nil {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
+func TestDo_TruncatedBody(t *testing.T) {
+	noBackoff(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "100")
+		_, _ = w.Write([]byte("{"))
+	}))
+	defer srv.Close()
+
+	if _, err := Exchange(srv.URL, "oidc", "DND-IT/x", "release"); err == nil {
+		t.Fatal("expected error for truncated body")
 	}
 }

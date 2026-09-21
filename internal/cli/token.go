@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"net/url"
 	"os"
@@ -48,10 +49,7 @@ func runToken(v *viper.Viper) error {
 	if identity == "" {
 		return fmt.Errorf("--identity (INPUT_IDENTITY) is required")
 	}
-	scope := v.GetString("scope")
-	if scope == "" {
-		scope = os.Getenv("GITHUB_REPOSITORY")
-	}
+	scope := cmp.Or(v.GetString("scope"), os.Getenv("GITHUB_REPOSITORY"))
 	if scope == "" {
 		return fmt.Errorf("--scope (INPUT_SCOPE) is required outside GitHub Actions")
 	}
@@ -98,10 +96,7 @@ func runTokenRevoke() error {
 	if installationToken == "" {
 		return nil
 	}
-	apiURL := os.Getenv("GITHUB_API_URL")
-	if apiURL == "" {
-		apiURL = "https://api.github.com"
-	}
+	apiURL := cmp.Or(os.Getenv("GITHUB_API_URL"), "https://api.github.com")
 	if err := token.Revoke(apiURL, installationToken); err != nil {
 		gha.Warning(err.Error())
 		return nil

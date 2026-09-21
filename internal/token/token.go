@@ -28,10 +28,7 @@ func IDToken(requestURL, requestToken, audience string) (string, error) {
 	q.Set("audience", audience)
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-	if err != nil {
-		return "", err
-	}
+	req := &http.Request{Method: http.MethodGet, URL: u, Header: http.Header{}}
 	req.Header.Set("Authorization", "Bearer "+requestToken)
 
 	var body struct {
@@ -63,15 +60,12 @@ func Exchange(exchangeURL, idToken, scope, identity string) (string, error) {
 	q.Set("identity", identity)
 	u.RawQuery = q.Encode()
 
+	req := &http.Request{Method: http.MethodGet, URL: u, Header: http.Header{}}
+	req.Header.Set("Authorization", "Bearer "+idToken)
+
 	var status int
 	var raw []byte
 	for attempt := 0; ; attempt++ {
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-		if err != nil {
-			return "", err
-		}
-		req.Header.Set("Authorization", "Bearer "+idToken)
-
 		status, raw, err = do(req)
 		retryable := err != nil || status >= 500
 		if !retryable || attempt >= len(Backoff) {

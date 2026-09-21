@@ -2,6 +2,7 @@ package gha
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -190,5 +191,22 @@ func TestSaveState_NoEnv(t *testing.T) {
 	t.Setenv("GITHUB_STATE", "")
 	if err := SaveState("k", "v"); err == nil {
 		t.Fatal("expected error when GITHUB_STATE is unset")
+	}
+}
+
+func TestMask(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout := os.Stdout
+	os.Stdout = w
+	Mask("secret")
+	os.Stdout = stdout
+	_ = w.Close()
+
+	got, _ := io.ReadAll(r)
+	if string(got) != "::add-mask::secret\n" {
+		t.Errorf("got %q", got)
 	}
 }
