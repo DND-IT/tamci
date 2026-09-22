@@ -30,7 +30,7 @@ type Options struct {
 	Owner         string
 	Repo          string
 	WorkDir       string
-	GitHubBaseURL string // test injection
+	GitHubBaseURL string
 }
 
 // DirectOptions are inputs for direct-mode runs (single value, list of files).
