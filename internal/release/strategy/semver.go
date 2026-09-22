@@ -56,8 +56,10 @@ func (s *Semver) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	}
 	// Scope the bump to the same commits as the release notes; otherwise
 	// commits elsewhere in a monorepo bump this service with empty notes.
+	// The explicit range matters: when the latest tag sits on a commit outside
+	// the path, git-cliff otherwise loses it and counts older commits too.
 	if glob := cfg.IncludeGlob(); glob != "" {
-		args = append(args, "--include-path", glob)
+		args = append(args, "--include-path", glob, latest+"..HEAD")
 	}
 	// Always pass --tag-pattern to scope git-cliff's version boundary detection
 	// to this service's tags only; otherwise git-cliff may use unrelated tags

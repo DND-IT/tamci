@@ -13,7 +13,7 @@ FROM alpine:3.23
 RUN apk add --no-cache ca-certificates git curl
 
 # Install git-cliff from GitHub releases (pinned version).
-ARG GIT_CLIFF_VERSION=2.7.0
+ARG GIT_CLIFF_VERSION=2.14.2
 RUN ARCH=$(uname -m) && \
     case "$ARCH" in \
       x86_64)  ARCH="x86_64-unknown-linux-musl" ;; \
