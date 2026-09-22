@@ -3,7 +3,6 @@ package e2e
 import (
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -23,8 +22,7 @@ func newBroker(t *testing.T) *broker {
 		q := r.URL.Query()
 		switch {
 		case r.URL.Path == "/oidc":
-			host, _ := url.Parse(b.URL)
-			if auth != "Bearer runner-request-token" || q.Get("audience") != host.Host {
+			if auth != "Bearer runner-request-token" || q.Get("audience") != r.Host {
 				http.Error(w, "bad OIDC request", http.StatusUnauthorized)
 				return
 			}
