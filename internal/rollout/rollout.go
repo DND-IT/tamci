@@ -177,7 +177,7 @@ func runDirectAuto(opts DirectOptions, gc *git.Client, files []string, updateOpt
 			return result, err
 		}
 	}
-	msg := directCommitMessage(opts, files)
+	msg := directCommitMessage(opts, files, oldTags)
 	if err := gc.Commit(msg); err != nil {
 		return result, err
 	}
@@ -209,7 +209,7 @@ func runDirectPR(opts DirectOptions, gc *git.Client, files []string, updateOpts 
 			return result, err
 		}
 	}
-	title := directCommitMessage(opts, files)
+	title := directCommitMessage(opts, files, oldTags)
 	if err := gc.Commit(title); err != nil {
 		return result, fmt.Errorf("commit: %w", err)
 	}
@@ -248,14 +248,35 @@ func runDirectPR(opts DirectOptions, gc *git.Client, files []string, updateOpts 
 	return result, nil
 }
 
-func directCommitMessage(opts DirectOptions, files []string) string {
+func directCommitMessage(opts DirectOptions, files []string, oldTags map[string]string) string {
 	if opts.CommitMessage != "" {
 		return opts.CommitMessage
 	}
-	if len(files) == 1 {
-		return fmt.Sprintf("update %s: %s", filepath.Base(files[0]), opts.Value)
+	scopes := make([]string, len(files))
+	for i, f := range files {
+		scopes[i] = directScope(f)
 	}
-	return fmt.Sprintf("update %d files: %s", len(files), opts.Value)
+	scope := strings.Join(scopes, ", ")
+	if len(files) == 1 {
+		if old := oldTags[files[0]]; old != "" && old != opts.Value {
+			return fmt.Sprintf("deploy(%s): %s → %s", scope, old, opts.Value)
+		}
+	}
+	return fmt.Sprintf("deploy(%s): %s", scope, opts.Value)
+}
+
+// directScope names a file by its service and environment when it follows
+// the <service>/envs/<env>/ chart layout, else by its directory.
+func directScope(file string) string {
+	dir := filepath.ToSlash(filepath.Dir(file))
+	if dir == "." {
+		return filepath.Base(file)
+	}
+	parts := strings.Split(dir, "/")
+	if n := len(parts); n >= 3 && parts[n-2] == "envs" {
+		return parts[n-3] + "/" + parts[n-1]
+	}
+	return dir
 }
 
 func directName(file string) string { return filepath.Base(file) }

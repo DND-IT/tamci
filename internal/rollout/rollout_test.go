@@ -471,3 +471,30 @@ func TestWriteStepSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestDirectCommitMessage(t *testing.T) {
+	prod := "deploy/charts/console/envs/prod/values.yaml"
+	dev := "deploy/charts/console/envs/dev/values.yaml"
+	tests := []struct {
+		name    string
+		opts    DirectOptions
+		files   []string
+		oldTags map[string]string
+		want    string
+	}{
+		{"env layout with old value", DirectOptions{Value: "0.19.0"}, []string{prod}, map[string]string{prod: "0.18.1"}, "deploy(console/prod): 0.18.1 → 0.19.0"},
+		{"no old value", DirectOptions{Value: "0.19.0"}, []string{prod}, nil, "deploy(console/prod): 0.19.0"},
+		{"unchanged value", DirectOptions{Value: "0.19.0"}, []string{prod}, map[string]string{prod: "0.19.0"}, "deploy(console/prod): 0.19.0"},
+		{"multiple files", DirectOptions{Value: "0.19.0"}, []string{dev, prod}, map[string]string{dev: "0.18.1", prod: "0.18.1"}, "deploy(console/dev, console/prod): 0.19.0"},
+		{"other layout", DirectOptions{Value: "v2"}, []string{"k8s/api/values.yaml"}, nil, "deploy(k8s/api): v2"},
+		{"repo root", DirectOptions{Value: "v2"}, []string{"values.yaml"}, nil, "deploy(values.yaml): v2"},
+		{"override", DirectOptions{Value: "v2", CommitMessage: "chore: bump"}, []string{prod}, nil, "chore: bump"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := directCommitMessage(tt.opts, tt.files, tt.oldTags); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
