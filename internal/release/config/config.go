@@ -27,6 +27,15 @@ func (c Config) ServicePath() string {
 	return ""
 }
 
+// IncludeGlob returns the git-cliff --include-path glob that scopes commits to
+// the current package or include-path, or "" for root-level releases.
+func (c Config) IncludeGlob() string {
+	if c.CurrentPackage != nil && c.CurrentPackage.Path != "" {
+		return c.CurrentPackage.Path + "/**"
+	}
+	return c.IncludePath
+}
+
 // Config holds the merged configuration from .release.yml and action inputs.
 type Config struct {
 	VersionStrategy string    `yaml:"version-strategy"`

@@ -33,10 +33,8 @@ func Generate(cfg config.Config) (string, error) {
 	if cliffConfig != "" {
 		args = append([]string{"--config", cliffConfig}, args...)
 	}
-	if cfg.CurrentPackage != nil && cfg.CurrentPackage.Path != "" {
-		args = append(args, "--include-path", cfg.CurrentPackage.Path+"/**")
-	} else if cfg.IncludePath != "" {
-		args = append(args, "--include-path", cfg.IncludePath)
+	if glob := cfg.IncludeGlob(); glob != "" {
+		args = append(args, "--include-path", glob)
 	}
 	// Always pass --tag-pattern to scope git-cliff's tag scanning to this
 	// service's tags. Without this, git-cliff may use unrelated tags as

@@ -30,7 +30,7 @@ func (s *Semver) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	// Bootstrap: no prior tag.
 	if latest == "" {
 		// Check for conventional commits.
-		has, err := hasConventionalCommitsSinceRef("")
+		has, err := hasConventionalCommitsSinceRef("", cfg.IncludeGlob())
 		if err != nil {
 			return Result{}, err
 		}
@@ -54,12 +54,13 @@ func (s *Semver) NextVersion(tags []string, cfg config.Config) (Result, error) {
 	if cliffConfig != "" {
 		args = append([]string{"--config", cliffConfig}, args...)
 	}
-	// Do NOT pass --include-path here. git-cliff --bumped-version with
-	// --include-path fails to see unreleased commits after the latest tag,
-	// returning the current version instead of the bumped one. The
-	// --tag-pattern alone correctly scopes version boundary detection.
-	// --include-path is only used in changelog.Generate() for release notes.
-	//
+	// Scope the bump to the same commits as the release notes; otherwise
+	// commits elsewhere in a monorepo bump this service with empty notes.
+	// The explicit range matters: when the latest tag sits on a commit outside
+	// the path, git-cliff otherwise loses it and counts older commits too.
+	if glob := cfg.IncludeGlob(); glob != "" {
+		args = append(args, "--include-path", glob, latest+"..HEAD")
+	}
 	// Always pass --tag-pattern to scope git-cliff's version boundary detection
 	// to this service's tags only; otherwise git-cliff may use unrelated tags
 	// (e.g. go-service-v1.13.0) as the latest version when releasing python-api.
@@ -132,10 +133,13 @@ func FindBuiltinConfig(strategy string) string {
 
 // hasConventionalCommitsSinceRef checks for conventional commits.
 // Used only for the bootstrap case (no tags) where git-cliff isn't called.
-func hasConventionalCommitsSinceRef(ref string) (bool, error) {
+func hasConventionalCommitsSinceRef(ref, includeGlob string) (bool, error) {
 	args := []string{"log", "--format=%s"}
 	if ref != "" {
 		args = append(args, ref+"..HEAD")
+	}
+	if includeGlob != "" {
+		args = append(args, "--", ":(glob)"+includeGlob)
 	}
 	out, err := exec.Command("git", args...).Output()
 	if err != nil {
