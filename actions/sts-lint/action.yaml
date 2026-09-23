@@ -10,7 +10,7 @@ inputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/dnd-it/tamci:0.2.2' # x-release-please-version
+  image: 'docker://ghcr.io/dnd-it/tamci:0.2.3' # x-release-please-version
   args: [sts-lint]
 
 branding:
