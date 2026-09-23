@@ -34,16 +34,17 @@ type EnvironmentConfig struct {
 }
 
 type ServiceConfig struct {
-	ECRRepository   string `yaml:"ecr_repository"`
-	Release         string `yaml:"release"` // "auto" | "gated"
-	Deploy          string `yaml:"deploy"`  // overrides environment-level
-	Tag             string `yaml:"tag"`     // overrides environment-level
-	TagPrefix       string `yaml:"tag_prefix"`
-	VersionStrategy string `yaml:"version_strategy"`
-	ValuesMode      string `yaml:"values_mode"`
-	ValuesKey       string `yaml:"values_key"`
-	AutoMerge       *bool  `yaml:"auto_merge"`
-	MergeMethod     string `yaml:"merge_method"`
+	Environments    []string `yaml:"environments"` // subset of environment keys; empty means all
+	ECRRepository   string   `yaml:"ecr_repository"`
+	Release         string   `yaml:"release"` // "auto" | "gated"
+	Deploy          string   `yaml:"deploy"`  // overrides environment-level
+	Tag             string   `yaml:"tag"`     // overrides environment-level
+	TagPrefix       string   `yaml:"tag_prefix"`
+	VersionStrategy string   `yaml:"version_strategy"`
+	ValuesMode      string   `yaml:"values_mode"`
+	ValuesKey       string   `yaml:"values_key"`
+	AutoMerge       *bool    `yaml:"auto_merge"`
+	MergeMethod     string   `yaml:"merge_method"`
 }
 
 // Environment is a fully-resolved environment entry for a specific service.
@@ -80,8 +81,20 @@ func (c *MatrixConfig) Resolve(service string) ([]Environment, error) {
 		return nil, fmt.Errorf("service %q not found in config", service)
 	}
 
-	envs := make([]Environment, 0, len(c.Environment))
-	for envName, envCfg := range c.Environment {
+	selected := c.Environment
+	if len(svcCfg.Environments) > 0 {
+		selected = make(map[string]EnvironmentConfig, len(svcCfg.Environments))
+		for _, name := range svcCfg.Environments {
+			envCfg, ok := c.Environment[name]
+			if !ok {
+				return nil, fmt.Errorf("service %q lists environment %q, which is not defined", service, name)
+			}
+			selected[name] = envCfg
+		}
+	}
+
+	envs := make([]Environment, 0, len(selected))
+	for envName, envCfg := range selected {
 		e := Environment{
 			Name:         envName,
 			Deploy:       envCfg.Deploy,
