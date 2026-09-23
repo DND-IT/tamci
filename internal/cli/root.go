@@ -23,6 +23,7 @@ func NewRootCmd() *cobra.Command {
 		newReleaseCmd(),
 		newRolloutCmd(),
 		newSetCmd(),
+		newStsLintCmd(),
 		newSummaryCmd(),
 		newTokenCmd(),
 	)
