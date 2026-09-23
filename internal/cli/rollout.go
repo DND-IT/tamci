@@ -85,22 +85,24 @@ func runRollout(v *viper.Viper) error {
 			Repo:          repoName,
 			WorkDir:       ".",
 			CommitMessage: v.GetString("commit-message"),
+			GitHubBaseURL: os.Getenv("GITHUB_API_URL"),
 		})
 	} else {
 		mode = "matrix"
 		result, err = rollout.Run(rollout.Options{
-			Service:      v.GetString("service"),
-			Version:      v.GetString("version"),
-			SHA:          v.GetString("sha"),
-			Token:        v.GetString("token"),
-			ConfigPath:   stringOrDefault(v, "config", ".github/matrix-config.yaml"),
-			ChartsDir:    stringOrDefault(v, "charts-dir", "deploy/charts"),
-			GitUserName:  stringOrDefault(v, "git-user-name", "github-actions[bot]"),
-			GitUserEmail: stringOrDefault(v, "git-user-email", "github-actions[bot]@users.noreply.github.com"),
-			DryRun:       v.GetBool("dry-run"),
-			Owner:        owner,
-			Repo:         repoName,
-			WorkDir:      ".",
+			Service:       v.GetString("service"),
+			Version:       v.GetString("version"),
+			SHA:           v.GetString("sha"),
+			Token:         v.GetString("token"),
+			ConfigPath:    stringOrDefault(v, "config", ".github/matrix-config.yaml"),
+			ChartsDir:     stringOrDefault(v, "charts-dir", "deploy/charts"),
+			GitUserName:   stringOrDefault(v, "git-user-name", "github-actions[bot]"),
+			GitUserEmail:  stringOrDefault(v, "git-user-email", "github-actions[bot]@users.noreply.github.com"),
+			DryRun:        v.GetBool("dry-run"),
+			Owner:         owner,
+			Repo:          repoName,
+			WorkDir:       ".",
+			GitHubBaseURL: os.Getenv("GITHUB_API_URL"),
 		})
 	}
 
