@@ -174,3 +174,52 @@ func TestLoad_Missing(t *testing.T) {
 		t.Fatal("want error")
 	}
 }
+
+func TestResolve_ServiceEnvironments(t *testing.T) {
+	p := writeConfig(t, `
+environment:
+  dev:
+    deploy: auto
+  prod:
+    deploy: pr
+service:
+  everywhere: {}
+  prod-only:
+    environments: [prod]
+`)
+	cfg, err := LoadConfig(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	envs, err := cfg.Resolve("prod-only")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(envs) != 1 || envs[0].Name != "prod" || envs[0].Deploy != "pr" {
+		t.Errorf("prod-only resolved to %+v, want just prod with deploy=pr", envs)
+	}
+
+	envs, err = cfg.Resolve("everywhere")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(envs) != 2 {
+		t.Errorf("everywhere resolved to %d envs, want 2", len(envs))
+	}
+}
+
+func TestResolve_ServiceEnvironmentUnknown(t *testing.T) {
+	p := writeConfig(t, `
+environment:
+  prod:
+    deploy: pr
+service:
+  svc:
+    environments: [prdo]
+`)
+	cfg, _ := LoadConfig(p)
+	if _, err := cfg.Resolve("svc"); err == nil {
+		t.Fatal("want error for an environment the config does not define")
+	}
+}

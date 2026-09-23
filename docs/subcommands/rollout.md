@@ -19,6 +19,21 @@ Replaces `action-deployer` (which will be renamed to `action-rollout`).
 | `--config`       | `.github/matrix-config.yaml`     | Path to the matrix config file.          |
 | `--charts-dir`   | `deploy/charts`                  | Root for per-service Helm chart values.  |
 
+A service rolls out to every environment under `environment:` unless it lists
+a subset in `environments:`; naming one that is not defined is an error.
+
+```yaml
+environment:
+  dev:
+    deploy: auto
+  prod:
+    deploy: pr
+service:
+  api: {}
+  console:
+    environments: [prod]
+```
+
 ## Direct-mode flags (presence of `--file` triggers direct mode)
 
 | Flag             | Default      | Description                                            |
