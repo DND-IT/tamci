@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3](https://github.com/DND-IT/tamci/compare/v0.2.2...v0.2.3) (2026-09-23)
+
+
+### Features
+
+* **release:** scope bumps to include-path and improve release notes ([#12](https://github.com/DND-IT/tamci/issues/12)) ([4ef9a68](https://github.com/DND-IT/tamci/commit/4ef9a68a865891d6a388a71a4d359f9bccbf0069))
+* **sts-lint:** add sts-lint subcommand to check octo-sts trust policies ([#14](https://github.com/DND-IT/tamci/issues/14)) ([f698f81](https://github.com/DND-IT/tamci/commit/f698f81844c5afb5c9727d8b3901b12c934f9df3))
+* **token:** add token subcommand for octo-sts brokers ([#10](https://github.com/DND-IT/tamci/issues/10)) ([14f41b0](https://github.com/DND-IT/tamci/commit/14f41b0e7c1b4b211500c29780af4ec9c28c5716))
+
+
+### Bug Fixes
+
+* **rollout:** name direct-mode PRs by service and environment ([#11](https://github.com/DND-IT/tamci/issues/11)) ([848bdb2](https://github.com/DND-IT/tamci/commit/848bdb2a43aa28c5cf2a531348db4a37570dbc12))
+
 ## [0.2.2](https://github.com/DND-IT/tamci/compare/v0.2.1...v0.2.2) (2026-09-08)
 
 
