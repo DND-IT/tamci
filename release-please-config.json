@@ -15,7 +15,8 @@
         "actions/release/action.yaml",
         "actions/rollout/action.yaml",
         "actions/set/action.yaml",
-        "actions/summary/action.yaml"
+        "actions/summary/action.yaml",
+        "actions/token/action.yaml"
       ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },

@@ -2,6 +2,7 @@ package gha
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -168,4 +169,44 @@ func parseGithubOutput(t *testing.T, content string) map[string]string {
 		}
 	}
 	return out
+}
+
+func TestSaveState_Appends(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state")
+	t.Setenv("GITHUB_STATE", path)
+
+	if err := SaveState("isPost", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveState("token", "ghs_x"); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if got := string(data); got != "isPost=true\ntoken=ghs_x\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSaveState_NoEnv(t *testing.T) {
+	t.Setenv("GITHUB_STATE", "")
+	if err := SaveState("k", "v"); err == nil {
+		t.Fatal("expected error when GITHUB_STATE is unset")
+	}
+}
+
+func TestMask(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout := os.Stdout
+	os.Stdout = w
+	Mask("secret")
+	os.Stdout = stdout
+	_ = w.Close()
+
+	got, _ := io.ReadAll(r)
+	if string(got) != "::add-mask::secret\n" {
+		t.Errorf("got %q", got)
+	}
 }
