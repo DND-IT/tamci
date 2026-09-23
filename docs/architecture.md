@@ -1,6 +1,6 @@
 # Architecture
 
-## One binary, seven subcommands
+## One binary, eight subcommands
 
 `tamci` is a Go CLI built on cobra. Each subcommand lives in
 `internal/cli/<name>.go` and delegates to a domain package under
@@ -16,7 +16,9 @@ cmd/tamci/main.go
        ├─ release.go   → internal/release/{changelog,strategy,…}
        ├─ lock.go      → internal/lock/
        ├─ set.go       → internal/yamlx + internal/git + internal/gh
-       └─ summary.go   → internal/summary/
+       ├─ stslint.go   → internal/stslint/
+       ├─ summary.go   → internal/summary/
+       └─ token.go     → internal/token/
 ```
 
 ## Shared infrastructure

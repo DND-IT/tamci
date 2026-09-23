@@ -82,6 +82,9 @@ func Warning(msg string) { fmt.Printf("::warning::%s\n", msg) }
 // Error emits a workflow `::error::` annotation.
 func Error(msg string) { fmt.Printf("::error::%s\n", msg) }
 
+// ErrorAt emits a workflow `::error::` annotation attached to file.
+func ErrorAt(file, msg string) { fmt.Printf("::error file=%s::%s\n", file, msg) }
+
 func appendFile(path, content string) error {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {

@@ -1,6 +1,6 @@
 # tamci
 
-Tamedia CI CLI — one Go binary, seven subcommands, runs identically locally and inside GitHub Actions.
+Tamedia CI CLI — one Go binary, eight subcommands, runs identically locally and inside GitHub Actions.
 
 `tamci` consolidates six previously separate Go-based GitHub Actions
 (`action-config`, `action-deployer`, `action-releaser`, `action-lock`,
@@ -19,6 +19,7 @@ delegates to the unified Docker image.
 | `tamci set`       | Update YAML files with format preservation; optionally open a PR.    |
 | `tamci summary`   | Read input text or a file and append it to `GITHUB_STEP_SUMMARY`.    |
 | `tamci token`     | Exchange the job OIDC token for a GitHub App token at an octo-sts broker. |
+| `tamci sts-lint`  | Check `.github/chainguard/*.sts.yaml` trust policies against the broker's rules. |
 
 ## Quick start
 
@@ -67,6 +68,7 @@ tamci/
 │   ├── matrix/               # matrix-config parsing + change detection
 │   ├── release/              # release subpackages (changelog, strategy, ...)
 │   ├── rollout/              # rollout orchestration + service/env config
+│   ├── stslint/              # octo-sts trust policy checks
 │   ├── summary/              # JSON deserialization + summary formatting
 │   ├── token/                # octo-sts token exchange and revocation
 │   └── yamlx/                # format-preserving YAML edit engine
