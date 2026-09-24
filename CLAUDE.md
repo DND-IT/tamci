@@ -67,7 +67,7 @@ GitHub-Action inputs through as `INPUT_*` env vars.
   original action's test corpus (~3,300 lines total). When refactoring,
   keep these green — they encode behavior contracts from the legacy
   actions.
-- **The Dockerfile builds for `linux/amd64` by default** (alpine base,
+- **The image is multi-arch (`linux/amd64`, `linux/arm64`)** (alpine base,
   CGO_ENABLED=0). Static binary, ENTRYPOINT `/tamci`.
 
 ## Common commands
