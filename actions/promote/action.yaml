@@ -1,0 +1,48 @@
+name: 'action-promote'
+description: 'Decide from the GitHub event what a deploy workflow does: plan on a pull request, apply dev from the default branch or a labelled pull request, apply prod only from a prod tag on the default branch, release the dev lock when the label goes.'
+author: 'group:default/dai'
+
+inputs:
+  experimental:
+    description: 'Must be true: promote is experimental and refuses to run without it.'
+    required: true
+    default: 'false'
+  target:
+    description: 'Stack or service name; part of the prod tag prefix.'
+    required: true
+  kind:
+    description: 'Tag kind, e.g. infra or app. Prod tags are <prod_environment>/<kind>/<target>/v<semver>.'
+    required: true
+  label:
+    description: 'Pull request label that applies the pull request to dev.'
+    required: false
+    default: 'deploy:dev'
+  default_branch:
+    description: 'Branch dev is applied from and prod tags must be on. Defaults to the repository default branch from the event, then main.'
+    required: false
+    default: ''
+  dev_environment:
+    description: 'Name of the dev environment.'
+    required: false
+    default: 'dev'
+  prod_environment:
+    description: 'Name of the prod environment.'
+    required: false
+    default: 'prod'
+
+outputs:
+  plan:
+    description: 'Whether to plan (true/false).'
+  apply:
+    description: 'Environment to apply to: the dev or prod environment name, or empty.'
+  release:
+    description: 'Whether to release the dev lock (true/false).'
+
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/dnd-it/tamci:0.2.5' # x-release-please-version
+  args: [promote, resolve]
+
+branding:
+  icon: 'arrow-up-circle'
+  color: 'green'
