@@ -3,13 +3,21 @@ description: 'GitHub Action for distributed mutex locking using git refs. Acquir
 
 inputs:
   action:
-    description: 'Lock action: acquire or release'
+    description: 'Lock action: acquire, release or status'
     required: true
   lock_name:
     description: 'Name of the lock (used as the ref name under refs/locks/)'
     required: true
+  sha:
+    description: 'Commit the lock is taken on. Defaults to GITHUB_SHA.'
+    required: false
+    default: ''
+  holder:
+    description: 'Who holds the lock (e.g. pr-123). Recorded on acquire, so the same holder can re-acquire; on release the ref is only deleted if it matches.'
+    required: false
+    default: ''
   timeout:
-    description: 'Maximum time in seconds to wait for lock acquisition'
+    description: 'Maximum time in seconds to wait for lock acquisition. 0 tries once.'
     required: false
     default: '300'
   poll_interval:
@@ -17,7 +25,7 @@ inputs:
     required: false
     default: '10'
   stale_threshold:
-    description: 'Seconds after which a lock is considered stale and can be force-acquired. Set to 0 to disable.'
+    description: 'Seconds since acquisition after which a lock is considered stale and can be force-acquired. Set to 0 to disable.'
     required: false
     default: '600'
   fail_on_timeout:
@@ -33,6 +41,12 @@ outputs:
     description: 'Whether the lock was successfully acquired (true/false)'
   lock_ref:
     description: 'The full git ref used for the lock'
+  holder:
+    description: 'acquire and status: the current holder of the lock (empty if free or taken without a holder)'
+  locked:
+    description: 'status: whether the lock is currently held (true/false)'
+  released:
+    description: 'release: whether the lock ref was deleted (true/false)'
 
 runs:
   using: 'docker'

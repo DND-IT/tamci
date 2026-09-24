@@ -1,16 +1,22 @@
 // Package lock provides a distributed mutex backed by GitHub git refs.
-// Acquire creates a ref under refs/locks/<name>; release deletes it.
-// Identical refs cannot be created twice, giving atomic locking semantics.
+// Acquire points a ref under refs/locks/<name> at a lock commit whose
+// committer date is the acquisition time and whose message records the
+// holder; release deletes it. Identical refs cannot be created twice,
+// giving atomic locking semantics.
 package lock
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
+
+const holderTrailer = "Lock-Holder: "
 
 type Client struct {
 	repo    string
@@ -32,34 +38,66 @@ func (c *Client) refPath(lockName string) string {
 	return fmt.Sprintf("locks/%s", lockName)
 }
 
-// Acquire attempts to create a git ref as an atomic lock.
-// Returns true if the lock was acquired, false if it already exists.
-func (c *Client) Acquire(lockName, sha string) (bool, error) {
-	ref := fmt.Sprintf("refs/%s", c.refPath(lockName))
+type commit struct {
+	Message string `json:"message"`
+	Tree    struct {
+		SHA string `json:"sha"`
+	} `json:"tree"`
+	Committer struct {
+		Date time.Time `json:"date"`
+	} `json:"committer"`
+}
 
-	body, _ := json.Marshal(map[string]string{"ref": ref, "sha": sha})
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/repos/%s/git/refs", c.baseURL, c.repo), bytes.NewReader(body))
+// Acquire creates a lock commit on top of sha and points the lock ref at it.
+// Returns true if the lock was acquired, false if it is held by someone else.
+// A holder that already holds the lock re-acquires it: the ref moves to a new
+// lock commit on top of sha, which also renews the acquisition time.
+func (c *Client) Acquire(lockName, sha, holder string) (bool, error) {
+	lockSHA, err := c.createLockCommit(lockName, sha, holder)
 	if err != nil {
 		return false, err
 	}
-	c.setHeaders(req)
 
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode == http.StatusCreated {
+	status, err := c.call("POST", "git/refs", map[string]string{"ref": "refs/" + c.refPath(lockName), "sha": lockSHA}, nil)
+	if status == http.StatusCreated {
 		return true, nil
 	}
-	if resp.StatusCode == http.StatusUnprocessableEntity {
+	if status != http.StatusUnprocessableEntity {
+		return false, err
+	}
+	if holder == "" {
 		return false, nil
 	}
 
-	respBody, _ := io.ReadAll(resp.Body)
-	return false, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody))
+	current, locked, err := c.Holder(lockName)
+	if err != nil || !locked || current != holder {
+		return false, err
+	}
+	if _, err := c.call("PATCH", "git/refs/"+c.refPath(lockName), map[string]any{"sha": lockSHA, "force": true}, nil); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (c *Client) createLockCommit(lockName, sha, holder string) (string, error) {
+	target, err := c.getCommit(sha)
+	if err != nil {
+		return "", err
+	}
+
+	message := fmt.Sprintf("lock %s\n", lockName)
+	if holder != "" {
+		message += "\n" + holderTrailer + holder + "\n"
+	}
+
+	var created struct {
+		SHA string `json:"sha"`
+	}
+	payload := map[string]any{"message": message, "tree": target.Tree.SHA, "parents": []string{sha}}
+	if _, err := c.call("POST", "git/commits", payload, &created); err != nil {
+		return "", err
+	}
+	return created.SHA, nil
 }
 
 // Release deletes the lock ref. 404 is treated as success (idempotent).
@@ -86,77 +124,112 @@ func (c *Client) Release(lockName string) error {
 	return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody))
 }
 
-// LockAge returns the age of the lock in seconds, or -1 if the lock doesn't exist.
-func (c *Client) LockAge(lockName string) (int, error) {
-	ref := c.refPath(lockName)
+// ReleaseHeld deletes the lock ref only if holder is its recorded holder.
+// Returns false without error when the lock is free or held by someone else.
+func (c *Client) ReleaseHeld(lockName, holder string) (bool, error) {
+	current, locked, err := c.Holder(lockName)
+	if err != nil || !locked || current != holder {
+		return false, err
+	}
+	if err := c.Release(lockName); err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
-	sha, err := c.getRefSHA(ref)
+// Holder reports whether the lock is held and by whom. The holder is empty
+// for a lock taken without one.
+func (c *Client) Holder(lockName string) (string, bool, error) {
+	sha, err := c.getRefSHA(c.refPath(lockName))
+	if err != nil || sha == "" {
+		return "", false, err
+	}
+
+	lockCommit, err := c.getCommit(sha)
 	if err != nil {
+		return "", true, err
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(lockCommit.Message))
+	for scanner.Scan() {
+		if h, ok := strings.CutPrefix(scanner.Text(), holderTrailer); ok {
+			return h, true, nil
+		}
+	}
+	return "", true, nil
+}
+
+// LockAge returns the seconds since the lock was acquired, or -1 if the lock doesn't exist.
+func (c *Client) LockAge(lockName string) (int, error) {
+	sha, err := c.getRefSHA(c.refPath(lockName))
+	if err != nil || sha == "" {
 		return -1, nil
 	}
 
-	commitDate, err := c.getCommitDate(sha)
+	lockCommit, err := c.getCommit(sha)
 	if err != nil {
 		return -1, err
 	}
 
-	return int(time.Since(commitDate).Seconds()), nil
+	return int(time.Since(lockCommit.Committer.Date).Seconds()), nil
 }
 
 func (c *Client) getRefSHA(ref string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/repos/%s/git/ref/%s", c.baseURL, c.repo, ref), nil)
-	if err != nil {
-		return "", err
-	}
-	c.setHeaders(req)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("ref not found: %d", resp.StatusCode)
-	}
-
 	var result struct {
 		Object struct {
 			SHA string `json:"sha"`
 		} `json:"object"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	status, err := c.call("GET", "git/ref/"+ref, nil, &result)
+	if status == http.StatusNotFound {
+		return "", nil
+	}
+	if err != nil {
 		return "", err
 	}
 	return result.Object.SHA, nil
 }
 
-func (c *Client) getCommitDate(sha string) (time.Time, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/repos/%s/git/commits/%s", c.baseURL, c.repo, sha), nil)
+func (c *Client) getCommit(sha string) (*commit, error) {
+	var result commit
+	if _, err := c.call("GET", "git/commits/"+sha, nil, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *Client) call(method, path string, payload, out any) (int, error) {
+	var body io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return 0, err
+		}
+		body = bytes.NewReader(b)
+	}
+
+	req, err := http.NewRequest(method, fmt.Sprintf("%s/repos/%s/%s", c.baseURL, c.repo, path), body)
 	if err != nil {
-		return time.Time{}, err
+		return 0, err
 	}
 	c.setHeaders(req)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return time.Time{}, err
+		return 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return time.Time{}, fmt.Errorf("commit not found: %d", resp.StatusCode)
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		respBody, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, fmt.Errorf("%s %s: unexpected status %d: %s", method, path, resp.StatusCode, string(respBody))
 	}
-
-	var result struct {
-		Committer struct {
-			Date time.Time `json:"date"`
-		} `json:"committer"`
+	if out != nil {
+		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+			return resp.StatusCode, err
+		}
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return time.Time{}, err
-	}
-	return result.Committer.Date, nil
+	return resp.StatusCode, nil
 }
 
 // SetBaseURL overrides the API base URL — used by tests.
