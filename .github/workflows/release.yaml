@@ -22,7 +22,7 @@ jobs:
       - uses: DND-IT/tamci/actions/token@v0
         id: app-token
         with:
-          url: ${{ vars.GITHUB_STS_URL }}
+          url: ${{ vars.TOKEN_BROKER_URL }}
           identity: release-please
 
       - uses: googleapis/release-please-action@v4
