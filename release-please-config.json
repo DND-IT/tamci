@@ -12,6 +12,7 @@
         "action.yaml",
         "actions/config/action.yaml",
         "actions/lock/action.yaml",
+        "actions/promote/action.yaml",
         "actions/release/action.yaml",
         "actions/rollout/action.yaml",
         "actions/set/action.yaml",

@@ -1,5 +1,5 @@
 site_name: tamci
-site_description: Tamedia CI CLI — one Go binary, eight subcommands, runs locally and in CI.
+site_description: Tamedia CI CLI — one Go binary, nine subcommands, runs locally and in CI.
 docs_dir: docs
 
 nav:
@@ -10,6 +10,7 @@ nav:
       - rollout: subcommands/rollout.md
       - release: subcommands/release.md
       - lock: subcommands/lock.md
+      - promote: subcommands/promote.md
       - "set (yaml-update)": subcommands/set.md
       - summary: subcommands/summary.md
       - token: subcommands/token.md

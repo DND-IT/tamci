@@ -2,6 +2,7 @@ package yamlx
 
 import (
 	"fmt"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -135,4 +136,35 @@ func walk(n *yaml.Node, fn func(*yaml.Node)) {
 	for _, child := range n.Content {
 		walk(child, fn)
 	}
+}
+
+// ImageTag returns the tag of the first Helm-style image block whose
+// repository is imageName or ends in /imageName, or "" if there is none.
+func ImageTag(doc *Document, imageName string) string {
+	root := doc.Root
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		root = root.Content[0]
+	}
+	var found string
+	walk(root, func(n *yaml.Node) {
+		if found != "" || n.Kind != yaml.MappingNode {
+			return
+		}
+		var repo, tag *yaml.Node
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			switch n.Content[i].Value {
+			case "repository":
+				repo = n.Content[i+1]
+			case "tag":
+				tag = n.Content[i+1]
+			}
+		}
+		if repo == nil || tag == nil || tag.Kind != yaml.ScalarNode {
+			return
+		}
+		if repo.Value == imageName || strings.HasSuffix(repo.Value, "/"+imageName) {
+			found = tag.Value
+		}
+	})
+	return found
 }

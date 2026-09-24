@@ -1,6 +1,6 @@
 # tamci
 
-Tamedia CI CLI — one Go binary, eight subcommands, runs identically locally and inside GitHub Actions.
+Tamedia CI CLI — one Go binary, nine subcommands, runs identically locally and inside GitHub Actions.
 
 `tamci` consolidates six previously separate Go-based GitHub Actions
 (`action-config`, `action-deployer`, `action-releaser`, `action-lock`,
@@ -16,6 +16,7 @@ delegates to the unified Docker image.
 | `tamci rollout`   | Matrix-driven Helm values updates, or direct file mode.              |
 | `tamci release`   | Calculate the next version and create a tag/release via git-cliff.   |
 | `tamci lock`      | Distributed mutex via GitHub git refs (`refs/locks/<name>`).         |
+| `tamci promote`   | Promote to prod by tag: `resolve` decides what a CI run deploys, `tag` creates the prod tag locally. |
 | `tamci set`       | Update YAML files with format preservation; optionally open a PR.    |
 | `tamci summary`   | Read input text or a file and append it to `GITHUB_STEP_SUMMARY`.    |
 | `tamci token`     | Exchange the job OIDC token for a GitHub App token at an octo-sts broker. |
@@ -66,6 +67,7 @@ tamci/
 │   ├── git/                  # git CLI wrappers (stateless + stateful Client)
 │   ├── lock/                 # git-ref mutex
 │   ├── matrix/               # matrix-config parsing + change detection
+│   ├── promote/              # prod-by-tag decisions and prod tag preparation
 │   ├── release/              # release subpackages (changelog, strategy, ...)
 │   ├── rollout/              # rollout orchestration + service/env config
 │   ├── stslint/              # octo-sts trust policy checks
