@@ -241,6 +241,21 @@ func TestClient_DefaultBranch(t *testing.T) {
 	}
 }
 
+func TestClient_CurrentBranch(t *testing.T) {
+	setupHome(t)
+	_, clone := initRemoteAndClone(t)
+
+	c := &Client{Dir: clone}
+	if got := c.CurrentBranch(); got != "main" {
+		t.Errorf("current branch = %q, want main", got)
+	}
+
+	mustGit(t, clone, "checkout", "--detach")
+	if got := c.CurrentBranch(); got != "" {
+		t.Errorf("current branch on detached HEAD = %q, want empty", got)
+	}
+}
+
 func TestIsAuthFailure(t *testing.T) {
 	cases := []struct {
 		err  error

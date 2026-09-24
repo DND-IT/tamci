@@ -98,6 +98,15 @@ func (c *Client) RevParse(ref string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+// CurrentBranch returns the checked-out branch name, or "" when HEAD is detached.
+func (c *Client) CurrentBranch() string {
+	out, err := c.cmdOutput("symbolic-ref", "--short", "-q", "HEAD")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
 // DefaultBranch reads the remote HEAD symbolic ref. Returns "" if not resolvable.
 func (c *Client) DefaultBranch() string {
 	out, err := c.cmdOutput("symbolic-ref", "refs/remotes/origin/HEAD")
