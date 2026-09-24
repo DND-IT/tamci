@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/DND-IT/tamci/compare/v0.2.4...v0.2.5) (2026-09-24)
+
+
+### Features
+
+* **image:** publish multi-arch image for amd64 and arm64 ([#18](https://github.com/DND-IT/tamci/issues/18)) ([9e51d8b](https://github.com/DND-IT/tamci/commit/9e51d8b82e540b0ad0857dd31691463fc5a3b784))
+
 ## [0.2.4](https://github.com/DND-IT/tamci/compare/v0.2.3...v0.2.4) (2026-09-23)
 
 
