@@ -169,6 +169,10 @@ func preflightDirect(files []string, opts yamlx.UpdateOptions) error {
 }
 
 func runDirectAuto(opts DirectOptions, gc *git.Client, files []string, updateOpts yamlx.UpdateOptions, oldTags map[string]string, result *Result) (*Result, error) {
+	branch, err := pushBranch(gc)
+	if err != nil {
+		return result, err
+	}
 	for _, f := range files {
 		if _, err := yamlx.SetTag(f, opts.Value, updateOpts); err != nil {
 			return result, fmt.Errorf("%s: %w", f, err)
@@ -181,7 +185,6 @@ func runDirectAuto(opts DirectOptions, gc *git.Client, files []string, updateOpt
 	if err := gc.Commit(msg); err != nil {
 		return result, err
 	}
-	branch := currentBranch()
 	if err := gc.Push(branch, 3); err != nil {
 		return result, fmt.Errorf("push failed: %w", err)
 	}
@@ -353,10 +356,16 @@ func deployAuto(opts Options, envs []Environment, result *Result) error {
 	}
 
 	gc := &git.Client{Dir: opts.WorkDir, UserName: opts.GitUserName, UserEmail: opts.GitUserEmail}
+	var branch string
 	if !opts.DryRun {
 		if err := gc.Configure(); err != nil {
 			return err
 		}
+		b, err := pushBranch(gc)
+		if err != nil {
+			return err
+		}
+		branch = b
 	}
 
 	for _, e := range envs {
@@ -399,7 +408,6 @@ func deployAuto(opts Options, envs []Environment, result *Result) error {
 	if err := gc.Commit(msg); err != nil {
 		return err
 	}
-	branch := currentBranch()
 	if err := gc.Push(branch, 3); err != nil {
 		return fmt.Errorf("push failed: %w", err)
 	}
@@ -522,11 +530,21 @@ func valuesPath(opts Options, env string) (string, error) {
 	return full, nil
 }
 
-func currentBranch() string {
-	if b := os.Getenv("GITHUB_REF_NAME"); b != "" {
-		return b
+// pushBranch picks the branch an auto deploy pushes to: the checked-out
+// branch, else GITHUB_REF_NAME when the run was triggered by a branch. A
+// detached HEAD on a tag-triggered run has no safe target, so it errors.
+func pushBranch(gc *git.Client) (string, error) {
+	if b := gc.CurrentBranch(); b != "" {
+		return b, nil
 	}
-	return "main"
+	refType := os.Getenv("GITHUB_REF_TYPE")
+	if refType != "" && refType != "branch" {
+		return "", fmt.Errorf("HEAD is detached and the run was triggered by %s %q: check out the branch to deploy to (actions/checkout with ref: <branch>)", refType, os.Getenv("GITHUB_REF_NAME"))
+	}
+	if b := os.Getenv("GITHUB_REF_NAME"); b != "" {
+		return b, nil
+	}
+	return "main", nil
 }
 
 func defaultBranch(gc *git.Client) string {

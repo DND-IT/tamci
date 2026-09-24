@@ -163,6 +163,63 @@ func TestRunDirect_AutoDeployEndToEnd(t *testing.T) {
 	}
 }
 
+func TestRunDirect_AutoPushBranch(t *testing.T) {
+	cases := []struct {
+		name    string
+		refType string
+		refName string
+		detach  bool
+		wantErr string
+	}{
+		{name: "branch checked out on tag run", refType: "tag", refName: "v1.0.0"},
+		{name: "branch run", refType: "branch", refName: "main"},
+		{name: "detached HEAD on tag run", refType: "tag", refName: "v1.0.0", detach: true, wantErr: "HEAD is detached"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setupHome(t)
+			bare, clone := initRemoteAndClone(t, map[string]string{"values.yaml": valuesContent})
+			if tc.detach {
+				mustGit(t, clone, "checkout", "--detach")
+			}
+			t.Setenv("GITHUB_REF_TYPE", tc.refType)
+			t.Setenv("GITHUB_REF_NAME", tc.refName)
+			before := mustGit(t, bare, "rev-parse", "main")
+
+			result, err := RunDirect(DirectOptions{
+				Files:        []string{"values.yaml"},
+				Value:        "2.0.0",
+				WorkDir:      clone,
+				GitUserName:  "bot",
+				GitUserEmail: "bot@example.com",
+			})
+
+			if branches := mustGit(t, bare, "branch", "--list", tc.refName); tc.refType == "tag" && branches != "" {
+				t.Errorf("pushed a branch named after the tag: %q", branches)
+			}
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("want error containing %q, got: %v", tc.wantErr, err)
+				}
+				if got := mustGit(t, bare, "rev-parse", "main"); got != before {
+					t.Error("remote main moved despite the error")
+				}
+				data, _ := os.ReadFile(filepath.Join(clone, "values.yaml"))
+				if string(data) != valuesContent {
+					t.Error("values.yaml modified despite the error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := mustGit(t, bare, "rev-parse", "main"); got != result.CommitSHA {
+				t.Errorf("remote main %q != result sha %q", got, result.CommitSHA)
+			}
+		})
+	}
+}
+
 func TestRunDirect_PRDeployEndToEnd(t *testing.T) {
 	setupHome(t)
 	bare, clone := initRemoteAndClone(t, map[string]string{"values.yaml": valuesContent})
@@ -368,6 +425,63 @@ service:
 	data, _ := os.ReadFile(filepath.Join(clone, devValues))
 	if !strings.Contains(string(data), `tag: "1.2.3"`) {
 		t.Errorf("values not updated:\n%s", data)
+	}
+}
+
+func TestRun_MatrixAutoDeployTagRun(t *testing.T) {
+	cfg := `
+environment:
+  dev:
+    deploy: auto
+    tag: version
+service:
+  api: {}
+`
+	devValues := "charts/api/envs/dev/values.yaml"
+	for _, detach := range []bool{false, true} {
+		name := "branch checked out"
+		if detach {
+			name = "detached HEAD"
+		}
+		t.Run(name, func(t *testing.T) {
+			setupHome(t)
+			bare, clone := initRemoteAndClone(t, map[string]string{devValues: valuesContent})
+			if detach {
+				mustGit(t, clone, "checkout", "--detach")
+			}
+			t.Setenv("GITHUB_REF_TYPE", "tag")
+			t.Setenv("GITHUB_REF_NAME", "v1.2.3")
+			configPath := filepath.Join(clone, "matrix.config.yaml")
+			if err := os.WriteFile(configPath, []byte(cfg), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			_, err := Run(Options{
+				Service:      "api",
+				Version:      "1.2.3",
+				ConfigPath:   configPath,
+				ChartsDir:    filepath.Join(clone, "charts"),
+				WorkDir:      clone,
+				GitUserName:  "bot",
+				GitUserEmail: "bot@example.com",
+			})
+
+			if branches := mustGit(t, bare, "branch", "--list", "v1.2.3"); branches != "" {
+				t.Errorf("pushed a branch named after the tag: %q", branches)
+			}
+			if detach {
+				if err == nil || !strings.Contains(err.Error(), "HEAD is detached") {
+					t.Fatalf("want detached HEAD error, got: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := mustGit(t, bare, "log", "-1", "--format=%s", "main"); got != "deploy(api/dev): 1.2.3" {
+				t.Errorf("commit message on main = %q", got)
+			}
+		})
 	}
 }
 

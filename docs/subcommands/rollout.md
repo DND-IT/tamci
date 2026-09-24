@@ -56,6 +56,21 @@ service:
 | `--git-user-email`| `github-actions[bot]@users.noreply.github.com`            |
 | `--dry-run`      | `false`                                                    |
 
+## Which branch `deploy: auto` pushes to
+
+Auto deploys (matrix environments with `deploy: auto`, and direct mode with
+`--deploy auto`) commit and push to the branch checked out in the working
+directory. If HEAD is detached, they fall back to `GITHUB_REF_NAME` when the
+run was triggered by a branch (or `main` outside GitHub Actions). On a
+tag-triggered run with a detached HEAD there is no branch to push to, so the
+rollout fails before editing anything; check out the target branch first:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    ref: main
+```
+
 ## Outputs
 
 `deployed`, `environments`, `commit_sha`, `pr_urls`, `changed_files`, `diff`.
