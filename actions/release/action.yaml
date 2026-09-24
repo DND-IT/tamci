@@ -1,6 +1,6 @@
 name: 'action-release'
 description: 'Flexible GitHub Action for versioned releases powered by git-cliff'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   version-strategy:

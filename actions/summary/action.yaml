@@ -1,6 +1,6 @@
 name: 'action-summary'
 description: 'Reads and summarizes a string input, truncates if too long, and writes to GitHub summary.'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   path:

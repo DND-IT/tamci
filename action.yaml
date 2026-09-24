@@ -1,6 +1,6 @@
 name: 'tamci'
 description: 'Tamedia CI CLI — runs identically locally and inside GitHub Actions.'
-author: 'DND-IT'
+author: 'group:default/platform'
 
 inputs:
   args:

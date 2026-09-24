@@ -1,6 +1,6 @@
 name: 'action-yaml-update'
 description: 'Action to automate updating YAML files with format preservation. Supports Helm values and Kustomize configs.'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   files:

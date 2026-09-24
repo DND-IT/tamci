@@ -1,6 +1,6 @@
 name: 'action-sts-lint'
 description: 'Check the octo-sts trust policies in .github/chainguard against the token broker rules: GitHub Actions issuer, caller pinned by repository ID and workflow file, write only from main or an environment.'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   path:

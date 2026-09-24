@@ -1,6 +1,6 @@
 name: 'action-promote'
 description: 'Decide from the GitHub event what a deploy workflow does: plan on a pull request, apply dev from the default branch or a labelled pull request, apply prod only from a prod tag on the default branch, release the dev lock when the label goes.'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   experimental:

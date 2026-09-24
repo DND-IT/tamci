@@ -1,6 +1,6 @@
 name: 'action-token'
 description: 'Exchange the job OIDC token for a GitHub App installation token at an octo-sts token broker, and revoke it when the job ends.'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   url:
