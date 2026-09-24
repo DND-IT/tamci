@@ -5,14 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  packages: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -20,11 +19,11 @@ jobs:
       major: ${{ steps.release.outputs.major }}
       minor: ${{ steps.release.outputs.minor }}
     steps:
-      - uses: actions/create-github-app-token@v3
+      - uses: DND-IT/tamci/actions/token@v0
         id: app-token
         with:
-          app-id: ${{ vars.FISSION_GH_APP_ID }}
-          private-key: ${{ secrets.FISSION_GH_APP_PRIVATE_KEY }}
+          url: ${{ vars.GITHUB_STS_URL }}
+          identity: release-please
 
       - uses: googleapis/release-please-action@v4
         id: release
@@ -35,6 +34,9 @@ jobs:
 
   build-and-push:
     needs: release-please
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/image.yaml
     with:
       tags: |
@@ -49,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [release-please, build-and-push]
     if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
       - name: update major and minor version tags

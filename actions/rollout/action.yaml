@@ -1,6 +1,6 @@
 name: Rollout
 description: Atomically updates Helm values files (matrix mode driven by matrix.config.yaml, or direct mode for a single file).
-author: DND-IT
+author: 'group:default/platform'
 
 inputs:
   service:

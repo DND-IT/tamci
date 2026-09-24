@@ -1,6 +1,6 @@
 name: 'action-config'
 description: 'Github Action for reading configuration files and generating workflow matrices'
-author: 'group:default/dai'
+author: 'group:default/platform'
 
 inputs:
   config_path:

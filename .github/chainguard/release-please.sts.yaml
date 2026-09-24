@@ -1,0 +1,8 @@
+issuer: https://token.actions.githubusercontent.com
+subject: repo:DND-IT@19909911/tamci@1230603567:ref:refs/heads/main
+claim_pattern:
+  workflow_ref: DND-IT/tamci/\.github/workflows/release\.yaml@refs/heads/main
+
+permissions:
+  contents: write
+  pull_requests: write

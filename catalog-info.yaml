@@ -27,4 +27,4 @@ metadata:
 spec:
   type: tool
   lifecycle: production
-  owner: group:default/dai
+  owner: group:default/platform
