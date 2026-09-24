@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.6](https://github.com/DND-IT/tamci/compare/v0.2.5...v0.2.6) (2026-09-24)
+
+
+### Features
+
+* **lock:** record the holder and measure staleness from acquisition ([#22](https://github.com/DND-IT/tamci/issues/22)) ([920731b](https://github.com/DND-IT/tamci/commit/920731b959faa876e14b624e7ad3ca47b8e46d9a)), closes [#20](https://github.com/DND-IT/tamci/issues/20)
+* **promote:** add promote subcommand to resolve CI deploys and tag prod releases ([#24](https://github.com/DND-IT/tamci/issues/24)) ([2eaca7e](https://github.com/DND-IT/tamci/commit/2eaca7ed1d902b01d7fb84b0f1214ff955d0df9f))
+
+
+### Bug Fixes
+
+* **rollout:** push auto deploys to the checked-out branch, not the tag name ([#23](https://github.com/DND-IT/tamci/issues/23)) ([9f46fc5](https://github.com/DND-IT/tamci/commit/9f46fc5fb7fd95c5b87307de7c894432a003db58)), closes [#21](https://github.com/DND-IT/tamci/issues/21)
+
 ## [0.2.5](https://github.com/DND-IT/tamci/compare/v0.2.4...v0.2.5) (2026-09-24)
 
 
