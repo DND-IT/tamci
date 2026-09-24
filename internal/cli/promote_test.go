@@ -22,6 +22,7 @@ func TestPromoteResolve_WritesOutputs(t *testing.T) {
 	t.Setenv("GITHUB_STEP_SUMMARY", summaryPath)
 	t.Setenv("INPUT_TARGET", "shared")
 	t.Setenv("INPUT_KIND", "infra")
+	t.Setenv("INPUT_EXPERIMENTAL", "true")
 
 	cmd := NewRootCmd()
 	cmd.SetArgs([]string{"promote", "resolve"})
@@ -42,8 +43,32 @@ func TestPromoteResolve_WritesOutputs(t *testing.T) {
 	}
 }
 
+func TestPromote_RequiresExperimental(t *testing.T) {
+	t.Setenv("INPUT_EXPERIMENTAL", "")
+	t.Setenv("INPUT_TARGET", "shared")
+	t.Setenv("INPUT_KIND", "infra")
+	for _, args := range [][]string{{"promote", "resolve"}, {"promote", "tag", "shared", "--dry-run"}} {
+		cmd := NewRootCmd()
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "experimental") {
+			t.Errorf("%v: want experimental error, got %v", args, err)
+		}
+	}
+}
+
+func TestPromote_ExperimentalFlag(t *testing.T) {
+	t.Setenv("INPUT_EXPERIMENTAL", "")
+	t.Setenv("INPUT_TARGET", "shared")
+	cmd := NewRootCmd()
+	cmd.SetArgs([]string{"--experimental", "promote", "resolve"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "--kind") {
+		t.Fatalf("want --kind error past the gate, got %v", err)
+	}
+}
+
 func TestPromoteResolve_RequiresKind(t *testing.T) {
 	t.Setenv("INPUT_TARGET", "shared")
+	t.Setenv("INPUT_EXPERIMENTAL", "true")
 	cmd := NewRootCmd()
 	cmd.SetArgs([]string{"promote", "resolve"})
 	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "--kind") {

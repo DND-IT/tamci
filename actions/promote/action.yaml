@@ -3,6 +3,10 @@ description: 'Decide from the GitHub event what a deploy workflow does: plan on 
 author: 'group:default/dai'
 
 inputs:
+  experimental:
+    description: 'Must be true: promote is experimental and refuses to run without it.'
+    required: true
+    default: 'false'
   target:
     description: 'Stack or service name; part of the prod tag prefix.'
     required: true

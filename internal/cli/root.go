@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +20,8 @@ func NewRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 
+	cmd.PersistentFlags().Bool("experimental", false, "Enable experimental subcommands (currently: promote). Also INPUT_EXPERIMENTAL.")
+
 	cmd.AddCommand(
 		newConfigCmd(),
 		newLockCmd(),
@@ -30,6 +35,19 @@ func NewRootCmd() *cobra.Command {
 	)
 
 	return cmd
+}
+
+// requireExperimental fails unless --experimental or INPUT_EXPERIMENTAL=true
+// is set, so a subcommand can ship without anyone relying on it by accident.
+func requireExperimental(cmd *cobra.Command, _ []string) error {
+	enabled, _ := cmd.Flags().GetBool("experimental")
+	if !enabled {
+		enabled, _ = strconv.ParseBool(os.Getenv(envPrefix + "_EXPERIMENTAL"))
+	}
+	if !enabled {
+		return fmt.Errorf("%s is experimental: pass --experimental, or experimental: true on the action", cmd.CommandPath())
+	}
+	return nil
 }
 
 // newViper returns a fresh Viper bound to INPUT_* env vars, with kebab-case

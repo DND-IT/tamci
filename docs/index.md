@@ -32,7 +32,7 @@ in this repo that delegates to the unified Docker image.
 | `tamci rollout`   | action-deployer      | Matrix or direct file mode                  |
 | `tamci release`   | action-releaser      | semver/calver, direct or PR mode            |
 | `tamci lock`      | action-lock          | git-ref mutex under `refs/locks/`           |
-| `tamci promote`   | _(new)_              | Promote to prod by tag                      |
+| `tamci promote`   | _(new)_              | Promote to prod by tag (experimental)       |
 | `tamci set`       | action-yaml-update   | Format-preserving YAML editor               |
 | `tamci summary`   | action-summary       | Append to GitHub step summary               |
 | `tamci token`     | _(new)_              | GitHub App token from an octo-sts broker    |

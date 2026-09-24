@@ -19,8 +19,9 @@ import (
 
 func newPromoteCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "promote",
-		Short: "Promote to prod by tag: resolve what a CI run deploys, or create the prod tag locally.",
+		Use:               "promote",
+		Short:             "[experimental] Promote to prod by tag: resolve what a CI run deploys, or create the prod tag locally.",
+		PersistentPreRunE: requireExperimental,
 	}
 	cmd.AddCommand(newPromoteResolveCmd(), newPromoteTagCmd())
 	return cmd

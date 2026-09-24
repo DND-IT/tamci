@@ -9,6 +9,21 @@ commit on the default branch. Two subcommands cover the two sides:
 - `tamci promote tag <target>` runs on a laptop with the person's own git
   credentials and creates and pushes the prod tag.
 
+`promote` is experimental: both subcommands refuse to run unless the root
+flag `--experimental` is passed (`tamci --experimental promote tag shared`)
+or `INPUT_EXPERIMENTAL=true` is set, which is what the action's required
+`experimental: true` input does. Its flags, outputs and tag format may still
+change. No other subcommand is affected.
+
+```yaml
+- uses: DND-IT/tamci/actions/promote@v0
+  id: target
+  with:
+    experimental: true
+    target: shared
+    kind: infra
+```
+
 ## `tamci promote resolve`
 
 Reads `GITHUB_EVENT_NAME`, the payload at `GITHUB_EVENT_PATH`,
