@@ -118,6 +118,25 @@ func (c *RESTClient) EnableAutoMerge(nodeID, mergeMethod string) error {
 	return nil
 }
 
+// Release is the minimal GitHub release shape used to build deploy PR notes.
+type Release struct {
+	TagName string `json:"tag_name"`
+	Name    string `json:"name"`
+	Body    string `json:"body"`
+	URL     string `json:"html_url"`
+	Draft   bool   `json:"draft"`
+}
+
+// ListReleases returns one page of releases, newest first.
+func (c *RESTClient) ListReleases(page, perPage int) ([]Release, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=%d&page=%d", c.baseURL, c.Owner, c.Repo, perPage, page)
+	var releases []Release
+	if err := c.get(url, &releases); err != nil {
+		return nil, err
+	}
+	return releases, nil
+}
+
 func (c *RESTClient) findOpenPR(head, base string) (*PullRequest, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls?state=open&head=%s:%s&base=%s",
 		c.baseURL, c.Owner, c.Repo, c.Owner, head, base)

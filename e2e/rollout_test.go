@@ -63,6 +63,8 @@ func fakeGitHub(t *testing.T) (*httptest.Server, func() []pullRequest) {
 			_, _ = w.Write([]byte(`{"number":7,"html_url":"https://github.com/DND-IT/app/pull/7","state":"open","node_id":"PR_7"}`))
 		case strings.HasSuffix(r.URL.Path, "/labels"):
 			_, _ = w.Write([]byte("[]"))
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/DND-IT/app/releases":
+			_, _ = w.Write([]byte(`[{"tag_name":"console/v0.19.0","body":"- console change"},{"tag_name":"api/v0.19.0","body":"- api change"},{"tag_name":"console/v0.18.1","body":"- already deployed"}]`))
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
 			w.WriteHeader(http.StatusNotFound)
@@ -92,6 +94,7 @@ func TestRollout_DirectPRNamedByServiceAndEnvironment(t *testing.T) {
 		"INPUT_DEPLOY":      "pr",
 		"INPUT_BRANCH":      "deploy/console/prod",
 		"INPUT_TOKEN":       "ghs_test",
+		"INPUT_TAG_PREFIX":  "console/v",
 	}, "rollout")
 	if r.err != nil {
 		t.Fatalf("rollout: %v", r.err)
@@ -107,6 +110,9 @@ func TestRollout_DirectPRNamedByServiceAndEnvironment(t *testing.T) {
 	}
 	if !strings.Contains(prs[0].Body, "`0.18.1` | `0.19.0`") {
 		t.Errorf("PR body lacks the before/after row:\n%s", prs[0].Body)
+	}
+	if !strings.Contains(prs[0].Body, "- console change") || strings.Contains(prs[0].Body, "- api change") || strings.Contains(prs[0].Body, "- already deployed") {
+		t.Errorf("PR body should carry only the console/v0.19.0 release notes:\n%s", prs[0].Body)
 	}
 
 	if got := git(t, bare, "log", "-1", "--format=%s", "deploy/console/prod"); got != title {

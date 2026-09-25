@@ -225,12 +225,18 @@ func TestRunDirect_PRDeployEndToEnd(t *testing.T) {
 	bare, clone := initRemoteAndClone(t, map[string]string{"values.yaml": valuesContent})
 
 	var prCreated, autoMergeEnabled bool
+	var prBody string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == "GET" && r.URL.Path == "/repos/o/r/pulls":
 			_, _ = w.Write([]byte("[]"))
+		case r.Method == "GET" && r.URL.Path == "/repos/o/r/releases":
+			_, _ = w.Write([]byte(`[{"tag_name":"v3.0.0","body":"notes-v3"},{"tag_name":"v2.0.0","body":"notes-v2"},{"tag_name":"v1.0.0","body":"notes-v1"}]`))
 		case r.Method == "POST" && r.URL.Path == "/repos/o/r/pulls":
 			prCreated = true
+			var payload map[string]string
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			prBody = payload["body"]
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"number": 42, "html_url": "http://pr/42", "state": "open", "node_id": "n42",
@@ -252,6 +258,7 @@ func TestRunDirect_PRDeployEndToEnd(t *testing.T) {
 		Deploy:        "pr",
 		Branch:        "deploy/values",
 		AutoMerge:     true,
+		ReleaseNotes:  true,
 		Token:         "tok",
 		Owner:         "o",
 		Repo:          "r",
@@ -268,6 +275,12 @@ func TestRunDirect_PRDeployEndToEnd(t *testing.T) {
 	}
 	if !autoMergeEnabled {
 		t.Error("expected auto-merge GraphQL call")
+	}
+	if !strings.Contains(prBody, "notes-v3") || !strings.Contains(prBody, "notes-v2") || strings.Contains(prBody, "notes-v1") {
+		t.Errorf("PR body should carry notes for v3.0.0 and v2.0.0 only:\n%s", prBody)
+	}
+	if strings.Index(prBody, "notes-v3") > strings.Index(prBody, "notes-v2") {
+		t.Errorf("PR body should list releases newest first:\n%s", prBody)
 	}
 	if len(result.PRURLs) != 1 || result.PRURLs[0] != "http://pr/42" {
 		t.Errorf("pr urls = %v", result.PRURLs)
