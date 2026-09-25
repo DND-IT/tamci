@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.7](https://github.com/DND-IT/tamci/compare/v0.2.6...v0.2.7) (2026-09-25)
+
+
+### Features
+
+* **rollout:** add release notes of the deployed releases to deploy PRs ([879a0fd](https://github.com/DND-IT/tamci/commit/879a0fd2099270322c35fdcf52f9a100c3d4d489))
+* **rollout:** add release notes to deploy PRs ([#30](https://github.com/DND-IT/tamci/issues/30)) ([879a0fd](https://github.com/DND-IT/tamci/commit/879a0fd2099270322c35fdcf52f9a100c3d4d489))
+
 ## [0.2.6](https://github.com/DND-IT/tamci/compare/v0.2.5...v0.2.6) (2026-09-24)
 
 
