@@ -32,6 +32,7 @@ type Options struct {
 	Repo          string
 	WorkDir       string
 	GitHubBaseURL string
+	ReleaseNotes  bool
 }
 
 // DirectOptions are inputs for direct-mode runs (single value, list of files).
@@ -53,6 +54,8 @@ type DirectOptions struct {
 	DryRun        bool
 	GitHubBaseURL string
 	CommitMessage string
+	ReleaseNotes  bool
+	TagPrefix     string
 }
 
 // FileDiff captures the before/after value of a single updated file.
@@ -265,6 +268,9 @@ func runDirectPR(opts DirectOptions, gc *git.Client, files []string, updateOpts 
 	}
 
 	body := buildDirectPRBody(files, oldTags, opts.Value)
+	if opts.ReleaseNotes {
+		body += releaseNotes(ghc, opts.TagPrefix, commonOldTag(files, oldTags), opts.Value)
+	}
 	pr, err := ghc.EnsurePR(opts.Branch, base, title, body, []string{"deploy"})
 	if err != nil {
 		return result, err
@@ -331,6 +337,18 @@ func buildDirectPRBody(files []string, oldTags map[string]string, newVal string)
 	return sb.String()
 }
 
+// commonOldTag returns the value every file had before the update, or ""
+// when they differ, so release notes fall back to just the new release.
+func commonOldTag(files []string, oldTags map[string]string) string {
+	old := oldTags[files[0]]
+	for _, f := range files[1:] {
+		if oldTags[f] != old {
+			return ""
+		}
+	}
+	return old
+}
+
 func valueOrMarkdown(s string) string {
 	if s == "" {
 		return "_(none)_"
@@ -381,7 +399,7 @@ func Run(opts Options) (*Result, error) {
 	if err := deployAuto(opts, autoEnvs, result); err != nil {
 		return result, err
 	}
-	if err := deployPR(opts, prEnvs, result); err != nil {
+	if err := deployPR(opts, prEnvs, cfg.Service[opts.Service].TagPrefix, result); err != nil {
 		return result, err
 	}
 	return result, nil
@@ -441,7 +459,7 @@ func deployAuto(opts Options, envs []Environment, result *Result) error {
 	return commitAndPush(gc, branch, msg, targets, result)
 }
 
-func deployPR(opts Options, envs []Environment, result *Result) error {
+func deployPR(opts Options, envs []Environment, tagPrefix string, result *Result) error {
 	if len(envs) == 0 {
 		return nil
 	}
@@ -502,6 +520,9 @@ func deployPR(opts Options, envs []Environment, result *Result) error {
 		}
 
 		body := buildPRBody(opts, e.Name, oldTag, tag)
+		if opts.ReleaseNotes {
+			body += releaseNotes(ghc, tagPrefix, oldTag, tag)
+		}
 		pr, err := ghc.EnsurePR(branch, base, title, body, []string{"deploy"})
 		if err != nil {
 			return fmt.Errorf("environment %s: %w", e.Name, err)

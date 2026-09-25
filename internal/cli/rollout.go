@@ -42,11 +42,13 @@ func newRolloutCmd() *cobra.Command {
 	f.String("commit-message", "", "Override commit message (direct mode).")
 	f.Bool("auto-merge", false, "Enable auto-merge on the deploy PR (direct mode, deploy=pr).")
 	f.String("merge-method", "SQUASH", "MERGE | SQUASH | REBASE (direct mode, deploy=pr).")
+	f.String("tag-prefix", "", "Release tag prefix used to find release notes (direct mode, deploy=pr).")
 	// Shared
 	f.String("token", "", "GitHub token with contents:write and pull-requests:write.")
 	f.String("git-user-name", "github-actions[bot]", "Git commit author name.")
 	f.String("git-user-email", "github-actions[bot]@users.noreply.github.com", "Git commit author email.")
 	f.Bool("dry-run", false, "Print plan without pushing or creating PRs.")
+	f.Bool("release-notes", true, "Add the notes of every release being deployed to deploy PRs.")
 
 	return cmd
 }
@@ -86,6 +88,8 @@ func runRollout(v *viper.Viper) error {
 			WorkDir:       ".",
 			CommitMessage: v.GetString("commit-message"),
 			GitHubBaseURL: os.Getenv("GITHUB_API_URL"),
+			ReleaseNotes:  v.GetBool("release-notes"),
+			TagPrefix:     v.GetString("tag-prefix"),
 		})
 	} else {
 		mode = "matrix"
@@ -103,6 +107,7 @@ func runRollout(v *viper.Viper) error {
 			Repo:          repoName,
 			WorkDir:       ".",
 			GitHubBaseURL: os.Getenv("GITHUB_API_URL"),
+			ReleaseNotes:  v.GetBool("release-notes"),
 		})
 	}
 

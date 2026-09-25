@@ -52,6 +52,9 @@ inputs:
     description: "MERGE | SQUASH | REBASE (direct mode, deploy=pr)"
     required: false
     default: "SQUASH"
+  tag_prefix:
+    description: "Release tag prefix used to find release notes (direct mode, deploy=pr); matrix mode reads tag_prefix from the service config"
+    required: false
 
   token:
     description: "GitHub token with contents:write and pull-requests:write"
@@ -68,6 +71,10 @@ inputs:
     description: "Print plan without pushing or creating PRs"
     required: false
     default: "false"
+  release_notes:
+    description: "Add the notes of every GitHub release being deployed (old tag, new tag] to deploy PRs"
+    required: false
+    default: "true"
 
 outputs:
   deployed:
