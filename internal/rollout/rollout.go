@@ -33,6 +33,8 @@ type Options struct {
 	WorkDir       string
 	GitHubBaseURL string
 	ReleaseNotes  bool
+	// TagPrefix is used for release notes when the service config sets no tag_prefix.
+	TagPrefix string
 }
 
 // DirectOptions are inputs for direct-mode runs (single value, list of files).
@@ -399,7 +401,11 @@ func Run(opts Options) (*Result, error) {
 	if err := deployAuto(opts, autoEnvs, result); err != nil {
 		return result, err
 	}
-	if err := deployPR(opts, prEnvs, cfg.Service[opts.Service].TagPrefix, result); err != nil {
+	tagPrefix := cfg.Service[opts.Service].TagPrefix
+	if tagPrefix == "" {
+		tagPrefix = opts.TagPrefix
+	}
+	if err := deployPR(opts, prEnvs, tagPrefix, result); err != nil {
 		return result, err
 	}
 	return result, nil

@@ -125,3 +125,34 @@ func TestRollout_DirectPRNamedByServiceAndEnvironment(t *testing.T) {
 		t.Errorf("pr_urls output = %q", got)
 	}
 }
+
+func TestRollout_MatrixPRUsesTagPrefixInput(t *testing.T) {
+	isolateGit(t)
+	const values = "deploy/charts/console/envs/prod/values.yaml"
+	_, clone := remote(t, map[string]string{
+		".github/service-config.yaml": "environment:\n  prod:\n    deploy: pr\n    tag: version\nservice:\n  console: {}\n",
+		values:                        "image:\n  repository: ghcr.io/dnd-it/console\n  tag: \"0.18.1\"\n",
+	})
+	srv, created := fakeGitHub(t)
+
+	r := tamci(t, clone, map[string]string{
+		"GITHUB_REPOSITORY": "DND-IT/app",
+		"GITHUB_API_URL":    srv.URL,
+		"INPUT_CONFIG":      ".github/service-config.yaml",
+		"INPUT_SERVICE":     "console",
+		"INPUT_VERSION":     "0.19.0",
+		"INPUT_TOKEN":       "ghs_test",
+		"INPUT_TAG_PREFIX":  "console/v",
+	}, "rollout")
+	if r.err != nil {
+		t.Fatalf("rollout: %v", r.err)
+	}
+
+	prs := created()
+	if len(prs) != 1 {
+		t.Fatalf("created %d PRs, want 1", len(prs))
+	}
+	if !strings.Contains(prs[0].Body, "- console change") || strings.Contains(prs[0].Body, "- api change") || strings.Contains(prs[0].Body, "- already deployed") {
+		t.Errorf("PR body should carry only the console/v0.19.0 release notes:\n%s", prs[0].Body)
+	}
+}

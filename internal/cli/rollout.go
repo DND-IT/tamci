@@ -42,7 +42,7 @@ func newRolloutCmd() *cobra.Command {
 	f.String("commit-message", "", "Override commit message (direct mode).")
 	f.Bool("auto-merge", false, "Enable auto-merge on the deploy PR (direct mode, deploy=pr).")
 	f.String("merge-method", "SQUASH", "MERGE | SQUASH | REBASE (direct mode, deploy=pr).")
-	f.String("tag-prefix", "", "Release tag prefix used to find release notes (direct mode, deploy=pr).")
+	f.String("tag-prefix", "", "Release tag prefix used to find release notes (deploy=pr); in matrix mode the service's tag_prefix takes precedence.")
 	// Shared
 	f.String("token", "", "GitHub token with contents:write and pull-requests:write.")
 	f.String("git-user-name", "github-actions[bot]", "Git commit author name.")
@@ -108,6 +108,7 @@ func runRollout(v *viper.Viper) error {
 			WorkDir:       ".",
 			GitHubBaseURL: os.Getenv("GITHUB_API_URL"),
 			ReleaseNotes:  v.GetBool("release-notes"),
+			TagPrefix:     v.GetString("tag-prefix"),
 		})
 	}
 

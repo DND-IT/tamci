@@ -46,7 +46,6 @@ service:
 | `--branch`       | _(empty)_    | PR branch name (deploy=pr).                            |
 | `--auto-merge`   | `false`      | Enable auto-merge on the deploy PR.                    |
 | `--merge-method` | `SQUASH`     | `MERGE` \| `SQUASH` \| `REBASE`.                       |
-| `--tag-prefix`   | _(empty)_    | Release tag prefix used to find release notes.         |
 
 ## Shared
 
@@ -57,6 +56,7 @@ service:
 | `--git-user-email`| `github-actions[bot]@users.noreply.github.com`            |
 | `--dry-run`      | `false`                                                    |
 | `--release-notes`| `true`                                                     |
+| `--tag-prefix`   | _(empty)_                                                  |
 
 ## Which branch `deploy: auto` pushes to
 
@@ -78,9 +78,8 @@ rollout fails before editing anything; check out the target branch first:
 Every deploy PR lists the GitHub releases it ships: each published release
 after the tag currently in the values file, up to and including the new one,
 newest first. A release is matched by `<tag_prefix><version>`; the prefix
-comes from the service's `tag_prefix` in the matrix config (or
-`--tag-prefix` in direct mode), and without one both `1.4.0` and `v1.4.0`
-match. If the old tag has no release (such as the first deploy) only the
+comes from the service's `tag_prefix` in the matrix config, falling back
+to `--tag-prefix`, and without one both `1.4.0` and `v1.4.0` match. If the old tag has no release (such as the first deploy) only the
 new release is shown; if the new one has none (such as `tag: sha`
 environments), the section is left out. A failed lookup never blocks the deploy. Turn it off
 with `--release-notes=false`.
