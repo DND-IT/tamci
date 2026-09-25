@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/DND-IT/tamci/compare/v0.2.7...v0.2.8) (2026-09-25)
+
+
+### Bug Fixes
+
+* **rollout:** use the tag_prefix input in matrix mode ([#32](https://github.com/DND-IT/tamci/issues/32)) ([ec5f811](https://github.com/DND-IT/tamci/commit/ec5f811650ecd559fc942a93639b3b5dd4aaa030))
+
 ## [0.2.7](https://github.com/DND-IT/tamci/compare/v0.2.6...v0.2.7) (2026-09-25)
 
 
