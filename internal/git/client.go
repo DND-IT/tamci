@@ -2,7 +2,7 @@ package git
 
 // Stateful Client used by tamedia rollout. Operates on a working directory
 // and per-instance identity. Methods provide retry on push, separate
-// force-push, pull-rebase reconciliation, and auth-failure detection — needed
+// force-push, reset-and-reapply reconciliation, and auth-failure detection — needed
 // by deploy flows where multiple environments may race on the same branch.
 
 import (
@@ -46,8 +46,10 @@ func (c *Client) Commit(message string) error {
 }
 
 // Push pushes to origin/branch with exponential-backoff retry on conflict.
-// Pull-rebases between attempts. Returns early on auth failures.
-func (c *Client) Push(branch string, maxAttempts int) error {
+// Between attempts it resets onto the fresh origin/branch and calls reapply to
+// redo the change there: rebasing the old commit would conflict whenever the
+// concurrent push edited the same lines. Returns early on auth failures.
+func (c *Client) Push(branch string, maxAttempts int, reapply func() error) error {
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		err := c.run("push", "origin", branch)
 		if err == nil {
@@ -62,8 +64,14 @@ func (c *Client) Push(branch string, maxAttempts int) error {
 		delay := time.Duration(attempt*attempt) * time.Second
 		slog.Warn("push conflict, retrying", "attempt", attempt, "delay", delay)
 		time.Sleep(delay)
-		if err := c.run("pull", "--rebase", "origin", branch); err != nil {
-			return fmt.Errorf("pull --rebase failed: %w", err)
+		if err := c.run("fetch", "origin", branch); err != nil {
+			return fmt.Errorf("fetching origin/%s: %w", branch, err)
+		}
+		if err := c.run("reset", "--hard", "origin/"+branch); err != nil {
+			return fmt.Errorf("resetting to origin/%s: %w", branch, err)
+		}
+		if err := reapply(); err != nil {
+			return fmt.Errorf("reapplying change onto origin/%s: %w", branch, err)
 		}
 	}
 	return nil

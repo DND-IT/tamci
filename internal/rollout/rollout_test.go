@@ -612,3 +612,90 @@ func TestDirectCommitMessage(t *testing.T) {
 		})
 	}
 }
+
+// pushConcurrentTag advances the remote's values.yaml to tag from a second
+// clone, as a rollout that pushed first would.
+func pushConcurrentTag(t *testing.T, bare, tag string) {
+	t.Helper()
+	other := filepath.Join(t.TempDir(), "other")
+	mustGit(t, "", "clone", bare, other)
+	content := strings.Replace(valuesContent, `"1.0.0"`, `"`+tag+`"`, 1)
+	if err := os.WriteFile(filepath.Join(other, "values.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustGit(t, other, "commit", "-am", "deploy: "+tag)
+	mustGit(t, other, "push", "origin", "main")
+}
+
+func TestRunDirect_AutoRetryReappliesAfterConcurrentDeploy(t *testing.T) {
+	setupHome(t)
+	bare, clone := initRemoteAndClone(t, map[string]string{"values.yaml": valuesContent})
+	t.Setenv("GITHUB_REF_NAME", "main")
+	pushConcurrentTag(t, bare, "1.1.0")
+
+	result, err := RunDirect(DirectOptions{
+		Files:        []string{"values.yaml"},
+		Value:        "2.0.0",
+		WorkDir:      clone,
+		GitUserName:  "bot",
+		GitUserEmail: "bot@example.com",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.Deployed || result.EnvResults[0].Status != "deployed" {
+		t.Errorf("result = %+v, want deployed", result)
+	}
+	if got := mustGit(t, bare, "show", "main:values.yaml"); !strings.Contains(got, `tag: "2.0.0"`) {
+		t.Errorf("remote values.yaml not updated:\n%s", got)
+	}
+	if got := mustGit(t, bare, "rev-parse", "main"); got != result.CommitSHA {
+		t.Errorf("remote main %q != result sha %q", got, result.CommitSHA)
+	}
+}
+
+func TestRunDirect_AutoRetrySkipsWhenRemoteIsNewer(t *testing.T) {
+	setupHome(t)
+	bare, clone := initRemoteAndClone(t, map[string]string{"values.yaml": valuesContent})
+	t.Setenv("GITHUB_REF_NAME", "main")
+	pushConcurrentTag(t, bare, "3.0.0")
+	remoteBefore := mustGit(t, bare, "rev-parse", "main")
+
+	result, err := RunDirect(DirectOptions{
+		Files:        []string{"values.yaml"},
+		Value:        "2.0.0",
+		WorkDir:      clone,
+		GitUserName:  "bot",
+		GitUserEmail: "bot@example.com",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Deployed || result.EnvResults[0].Status != "skipped" {
+		t.Errorf("result = %+v, want skipped and not deployed", result)
+	}
+	if got := mustGit(t, bare, "rev-parse", "main"); got != remoteBefore {
+		t.Error("remote main moved; an older version must not be pushed over a newer one")
+	}
+}
+
+func TestNewerVersion(t *testing.T) {
+	cases := []struct {
+		current, tag string
+		want         bool
+	}{
+		{"0.10.0", "0.9.2", true},
+		{"0.9.2", "0.10.0", false},
+		{"1.0.0", "1.0.0", false},
+		{"v2.0.0", "v1.9.9", true},
+		{"abc1234", "1.0.0", false},
+		{"1.0.0", "abc1234", false},
+		{"1.0.0-rc.1", "0.9.0", false},
+		{"", "1.0.0", false},
+	}
+	for _, tc := range cases {
+		if got := newerVersion(tc.current, tc.tag); got != tc.want {
+			t.Errorf("newerVersion(%q, %q) = %v, want %v", tc.current, tc.tag, got, tc.want)
+		}
+	}
+}

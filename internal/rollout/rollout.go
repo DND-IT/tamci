@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/dnd-it/tamci/internal/gh"
@@ -65,7 +66,7 @@ type FileDiff struct {
 type EnvResult struct {
 	Name   string
 	Tag    string
-	Status string // "deployed" | "pr-opened" | "pr-updated" | "dry-run"
+	Status string // "deployed" | "skipped" | "pr-opened" | "pr-updated" | "dry-run"
 	PRURL  string
 }
 
@@ -173,30 +174,66 @@ func runDirectAuto(opts DirectOptions, gc *git.Client, files []string, updateOpt
 	if err != nil {
 		return result, err
 	}
-	for _, f := range files {
-		if _, err := yamlx.SetTag(f, opts.Value, updateOpts); err != nil {
-			return result, fmt.Errorf("%s: %w", f, err)
-		}
-		if err := gc.Add(f); err != nil {
-			return result, err
-		}
+	targets := make([]target, len(files))
+	for i, f := range files {
+		targets[i] = target{file: f, tag: opts.Value, opts: updateOpts, env: len(result.EnvResults)}
+		result.DiffSummary = append(result.DiffSummary, FileDiff{File: f, OldValue: oldTags[f], NewValue: opts.Value})
+		result.EnvResults = append(result.EnvResults, EnvResult{Name: directName(f), Tag: opts.Value, Status: "deployed"})
 	}
 	msg := directCommitMessage(opts, files, oldTags)
-	if err := gc.Commit(msg); err != nil {
+	if err := commitAndPush(gc, branch, msg, targets, result); err != nil {
 		return result, err
 	}
-	if err := gc.Push(branch, 3); err != nil {
-		return result, fmt.Errorf("push failed: %w", err)
+	return result, nil
+}
+
+// target is one values file an auto deploy sets, with its index in
+// Result.EnvResults so a skip on retry can be reported.
+type target struct {
+	file string
+	tag  string
+	opts yamlx.UpdateOptions
+	env  int
+}
+
+// commitAndPush sets every target, commits and pushes. When the push is
+// rejected because the branch moved, it re-applies the targets to the fresh
+// branch tip, skipping files that already hold a newer version so a run that
+// finishes late cannot roll an environment back.
+func commitAndPush(gc *git.Client, branch, msg string, targets []target, result *Result) error {
+	apply := func(guard bool) error {
+		for _, t := range targets {
+			if guard {
+				if cur, _ := yamlx.ReadTag(t.file, t.opts); newerVersion(cur, t.tag) {
+					slog.Warn("values file already holds a newer version, skipping", "file", t.file, "current", cur, "tag", t.tag)
+					result.EnvResults[t.env].Status = "skipped"
+					continue
+				}
+			}
+			if _, err := yamlx.SetTag(t.file, t.tag, t.opts); err != nil {
+				return fmt.Errorf("%s: %w", t.file, err)
+			}
+			if err := gc.Add(t.file); err != nil {
+				return err
+			}
+		}
+		return gc.Commit(msg)
+	}
+	if err := apply(false); err != nil {
+		return err
+	}
+	if err := gc.Push(branch, 3, func() error { return apply(true) }); err != nil {
+		return fmt.Errorf("push failed: %w", err)
 	}
 	if sha, err := gc.RevParse("HEAD"); err == nil {
 		result.CommitSHA = sha
 	}
-	result.Deployed = true
-	for _, f := range files {
-		result.DiffSummary = append(result.DiffSummary, FileDiff{File: f, OldValue: oldTags[f], NewValue: opts.Value})
-		result.EnvResults = append(result.EnvResults, EnvResult{Name: directName(f), Tag: opts.Value, Status: "deployed"})
+	for _, e := range result.EnvResults {
+		if e.Status == "deployed" {
+			result.Deployed = true
+		}
 	}
-	return result, nil
+	return nil
 }
 
 func runDirectPR(opts DirectOptions, gc *git.Client, files []string, updateOpts yamlx.UpdateOptions, oldTags map[string]string, result *Result) (*Result, error) {
@@ -368,6 +405,7 @@ func deployAuto(opts Options, envs []Environment, result *Result) error {
 		branch = b
 	}
 
+	var targets []target
 	for _, e := range envs {
 		tag := resolveTag(e, opts)
 		file, err := valuesPath(opts, e.Name)
@@ -388,12 +426,7 @@ func deployAuto(opts Options, envs []Environment, result *Result) error {
 			continue
 		}
 
-		if _, err := yamlx.SetTag(file, tag, updateOpts); err != nil {
-			return fmt.Errorf("environment %s: %w", e.Name, err)
-		}
-		if err := gc.Add(file); err != nil {
-			return err
-		}
+		targets = append(targets, target{file: file, tag: tag, opts: updateOpts, env: len(result.EnvResults)})
 		result.Environments = append(result.Environments, e.Name)
 		result.DiffSummary = append(result.DiffSummary, FileDiff{File: file, OldValue: oldTag, NewValue: tag})
 		result.EnvResults = append(result.EnvResults, EnvResult{Name: e.Name, Tag: tag, Status: "deployed"})
@@ -405,17 +438,7 @@ func deployAuto(opts Options, envs []Environment, result *Result) error {
 
 	envList := strings.Join(result.Environments, ",")
 	msg := fmt.Sprintf("deploy(%s/%s): %s", opts.Service, envList, opts.Version)
-	if err := gc.Commit(msg); err != nil {
-		return err
-	}
-	if err := gc.Push(branch, 3); err != nil {
-		return fmt.Errorf("push failed: %w", err)
-	}
-	if sha, err := gc.RevParse("HEAD"); err == nil {
-		result.CommitSHA = sha
-	}
-	result.Deployed = len(result.Environments) > 0
-	return nil
+	return commitAndPush(gc, branch, msg, targets, result)
 }
 
 func deployPR(opts Options, envs []Environment, result *Result) error {
@@ -653,6 +676,39 @@ func WriteStepSummary(result *Result, service, version string) error {
 		err = closeErr
 	}
 	return err
+}
+
+// newerVersion reports whether current is a strictly higher semver than tag.
+// Tags that are not plain X.Y.Z (with an optional v prefix), such as SHAs,
+// never compare as newer.
+func newerVersion(current, tag string) bool {
+	c, ok1 := parseVersion(current)
+	t, ok2 := parseVersion(tag)
+	if !ok1 || !ok2 {
+		return false
+	}
+	for i := range c {
+		if c[i] != t[i] {
+			return c[i] > t[i]
+		}
+	}
+	return false
+}
+
+func parseVersion(s string) ([3]int, bool) {
+	var v [3]int
+	parts := strings.Split(strings.TrimPrefix(s, "v"), ".")
+	if len(parts) != 3 {
+		return v, false
+	}
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 0 {
+			return v, false
+		}
+		v[i] = n
+	}
+	return v, true
 }
 
 func valueOrNone(s string) string {
