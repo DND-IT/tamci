@@ -104,5 +104,8 @@ func releaseNotes(c releaseLister, prefix, oldTag, newTag string) string {
 		slog.Warn("fetching release notes", "error", err)
 		return ""
 	}
+	if len(releases) == 0 && newTag != "" && newTag != oldTag {
+		slog.Warn("no release found for the deployed tag, leaving out release notes", "tag", newTag, "tag_prefix", prefix)
+	}
 	return releaseNotesSection(releases)
 }

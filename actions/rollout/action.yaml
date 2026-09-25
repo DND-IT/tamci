@@ -53,7 +53,7 @@ inputs:
     required: false
     default: "SQUASH"
   tag_prefix:
-    description: "Release tag prefix used to find release notes (direct mode, deploy=pr); matrix mode reads tag_prefix from the service config"
+    description: "Release tag prefix used to find release notes (deploy=pr); in matrix mode the service's tag_prefix in the config takes precedence"
     required: false
 
   token:
