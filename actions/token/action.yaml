@@ -24,7 +24,7 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/dnd-it/tamci:0.2.7' # x-release-please-version
+  image: 'docker://ghcr.io/dnd-it/tamci:0.2.8' # x-release-please-version
   args: [token]
   post-entrypoint: /tamci
 
