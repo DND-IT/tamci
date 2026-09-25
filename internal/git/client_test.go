@@ -88,7 +88,7 @@ func TestClient_AddCommitPush(t *testing.T) {
 	if err := c.Commit("deploy: v2"); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
-	if err := c.Push("main", 1); err != nil {
+	if err := c.Push("main", 1, nil); err != nil {
 		t.Fatalf("push: %v", err)
 	}
 
@@ -116,40 +116,54 @@ func TestClient_CommitNothingStagedIsNoop(t *testing.T) {
 	}
 }
 
-func TestClient_PushRetriesAfterRemoteAdvance(t *testing.T) {
+func TestClient_PushReappliesOntoRemoteAdvance(t *testing.T) {
 	setupHome(t)
 	bare, clone := initRemoteAndClone(t)
 
-	// Advance the remote from a second clone so the first push conflicts.
+	// A concurrent run edits the same line first, so rebasing this run's
+	// commit would conflict.
 	other := filepath.Join(t.TempDir(), "other")
 	mustGit(t, "", "clone", bare, other)
-	if err := os.WriteFile(filepath.Join(other, "other.txt"), []byte("x\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(other, "README.md"), []byte("theirs\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	mustGit(t, other, "add", "other.txt")
-	mustGit(t, other, "commit", "-m", "concurrent")
+	mustGit(t, other, "commit", "-am", "concurrent")
 	mustGit(t, other, "push", "origin", "main")
 
 	c := &Client{Dir: clone, UserName: "bot", UserEmail: "bot@example.com"}
 	if err := c.Configure(); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(clone, "mine.txt"), []byte("y\n"), 0o644); err != nil {
-		t.Fatal(err)
+	var sawTheirs bool
+	apply := func() error {
+		data, err := os.ReadFile(filepath.Join(clone, "README.md"))
+		if err != nil {
+			return err
+		}
+		sawTheirs = sawTheirs || string(data) == "theirs\n"
+		if err := os.WriteFile(filepath.Join(clone, "README.md"), []byte("mine\n"), 0o644); err != nil {
+			return err
+		}
+		if err := c.Add("README.md"); err != nil {
+			return err
+		}
+		return c.Commit("mine")
 	}
-	if err := c.Add("mine.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.Commit("mine"); err != nil {
+	if err := apply(); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.Push("main", 2); err != nil {
-		t.Fatalf("push should succeed after pull --rebase, got: %v", err)
+	if err := c.Push("main", 2, apply); err != nil {
+		t.Fatalf("push should succeed after reapplying onto origin/main, got: %v", err)
 	}
-	files := mustGit(t, bare, "ls-tree", "--name-only", "main")
-	if !strings.Contains(files, "other.txt") || !strings.Contains(files, "mine.txt") {
-		t.Errorf("remote tree missing files after rebase push:\n%s", files)
+	if !sawTheirs {
+		t.Error("reapply did not run on the fresh origin/main tree")
+	}
+	if got := mustGit(t, bare, "show", "main:README.md"); got != "mine" {
+		t.Errorf("remote README.md = %q, want mine", got)
+	}
+	if got := mustGit(t, bare, "log", "-2", "--format=%s", "main"); got != "mine\nconcurrent" {
+		t.Errorf("remote history = %q, want mine on top of concurrent", got)
 	}
 }
 
@@ -158,7 +172,7 @@ func TestClient_PushFailsAfterMaxAttempts(t *testing.T) {
 	_, clone := initRemoteAndClone(t)
 
 	c := &Client{Dir: clone, UserName: "bot", UserEmail: "bot@example.com"}
-	if err := c.Push("no-such-branch", 1); err == nil {
+	if err := c.Push("no-such-branch", 1, nil); err == nil {
 		t.Fatal("expected error pushing a branch that does not exist")
 	}
 }
