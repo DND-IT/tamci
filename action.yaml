@@ -9,7 +9,7 @@ inputs:
 
 runs:
   using: docker
-  image: 'docker://ghcr.io/dnd-it/tamci:0.2.6' # x-release-please-version
+  image: 'docker://ghcr.io/dnd-it/tamci:0.2.7' # x-release-please-version
   # Docker actions pass each args entry as a single argv element, so the
   # whole input would arrive as one token. Route through a shell to word-split.
   entrypoint: /bin/sh
