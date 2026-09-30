@@ -1,8 +1,8 @@
 // Package stslint checks octo-sts trust policies (.github/chainguard/*.sts.yaml)
 // against the rules a policy must meet before a broker hands out tokens on it:
-// GitHub Actions as the only issuer, a caller pinned by immutable repository ID
-// and by workflow file, and write permissions only from main or a GitHub
-// environment.
+// GitHub Actions or one AWS account as the issuer, a caller pinned by immutable
+// repository ID and by workflow file or by one IAM role ARN, and write
+// permissions only from main or a GitHub environment.
 package stslint
 
 import (
@@ -17,8 +17,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// GitHubActionsIssuer is the only issuer a policy may trust.
+// GitHubActionsIssuer is the issuer of GitHub Actions OIDC tokens.
 const GitHubActionsIssuer = "https://token.actions.githubusercontent.com"
+
+// AWSIssuerForm is the shape of an AWS account's issuer for STS web identity
+// tokens (IAM outbound identity federation): the account's own URL, with OIDC
+// discovery under it. A token from it names the requesting IAM principal's ARN
+// as subject.
+const AWSIssuerForm = "https://<id>.tokens.sts.global.api.aws"
 
 // Policy mirrors octo-sts's TrustPolicy. Decoding is strict, so a misspelt
 // field fails the lint instead of silently loosening the policy.
@@ -56,6 +62,9 @@ var (
 	workflowPin = regexp.MustCompile(`^([A-Za-z0-9-]+)/((?:[A-Za-z0-9_-]|\\\.)+)/\\\.github/workflows/(?:[A-Za-z0-9_-]|\\\.)+\\\.ya?ml@`)
 
 	writeContext = regexp.MustCompile(`^(?:ref:refs/heads/main|environment:[A-Za-z0-9_.-]+)$`)
+
+	awsIssuer      = regexp.MustCompile(`^https://[0-9a-f-]+\.tokens\.sts\.global\.api\.aws$`)
+	awsRoleSubject = regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_/-]+$`)
 )
 
 // LintDir lints every *.sts.yaml in dir. A missing directory has no policies
@@ -109,16 +118,23 @@ func Lint(data []byte) []string {
 	add := func(format string, a ...any) { msgs = append(msgs, fmt.Sprintf(format, a...)) }
 
 	if p.IssuerPattern != "" {
-		add("issuer_pattern is not allowed; set issuer: %s", GitHubActionsIssuer)
-	}
-	if p.Issuer != GitHubActionsIssuer {
-		add("issuer must be %s", GitHubActionsIssuer)
+		add("issuer_pattern is not allowed; set issuer to %s or to one AWS account issuer, %s", GitHubActionsIssuer, AWSIssuerForm)
 	}
 
-	owner, repo, contexts, subjectMsgs := checkSubject(p)
-	msgs = append(msgs, subjectMsgs...)
-
-	msgs = append(msgs, checkWorkflowPin(p, owner, repo)...)
+	var contexts []string
+	awsIdentity := false
+	switch {
+	case p.Issuer == GitHubActionsIssuer:
+		owner, repo, runs, subjectMsgs := checkSubject(p)
+		contexts = runs
+		msgs = append(msgs, subjectMsgs...)
+		msgs = append(msgs, checkWorkflowPin(p, owner, repo)...)
+	case awsIssuer.MatchString(p.Issuer):
+		awsIdentity = true
+		msgs = append(msgs, checkAWSSubject(p)...)
+	default:
+		add("issuer must be %s or one AWS account issuer, %s", GitHubActionsIssuer, AWSIssuerForm)
+	}
 
 	if len(p.Permissions) == 0 {
 		add("permissions is empty; list what the token needs")
@@ -133,6 +149,9 @@ func Lint(data []byte) []string {
 			add("permissions.%s: %q is not read, write or admin", k, v)
 		}
 	}
+	if len(writes) > 0 && awsIdentity {
+		add("%s is granted to an AWS identity; write permissions are only for GitHub Actions runs on ref:refs/heads/main or environment:<name>", strings.Join(writes, ", "))
+	}
 	if len(writes) > 0 && contexts != nil {
 		for _, c := range contexts {
 			if !writeContext.MatchString(c) {
@@ -141,6 +160,26 @@ func Lint(data []byte) []string {
 		}
 	}
 
+	return msgs
+}
+
+// checkAWSSubject pins an AWS identity to one IAM role. The token's subject is
+// the ARN of the principal that requested it, so the role ARN is the whole
+// identity: no pattern, and no claim to pin on top of it.
+func checkAWSSubject(p Policy) []string {
+	var msgs []string
+	if p.SubjectPattern != "" {
+		msgs = append(msgs, "subject_pattern is not allowed with an AWS issuer; set subject to one role ARN")
+	}
+	switch {
+	case p.Subject == "" && p.SubjectPattern == "":
+		msgs = append(msgs, "subject is required with an AWS issuer: one role ARN, arn:aws:iam::ACCOUNT-ID:role/NAME")
+	case p.Subject != "" && !awsRoleSubject.MatchString(p.Subject):
+		msgs = append(msgs, "subject must be one role ARN, arn:aws:iam::ACCOUNT-ID:role/NAME")
+	}
+	if len(p.ClaimPattern) > 0 {
+		msgs = append(msgs, "claim_pattern is not used with an AWS issuer; the subject names the role")
+	}
 	return msgs
 }
 
