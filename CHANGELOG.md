@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/DND-IT/tamci/compare/v0.2.9...v0.2.10) (2026-09-30)
+
+
+### Bug Fixes
+
+* **release:** move the version alias tags with the App token ([#36](https://github.com/DND-IT/tamci/issues/36)) ([0ce46ca](https://github.com/DND-IT/tamci/commit/0ce46ca6b130a7ab1372ce4794e815f253596dd8))
+
 ## [0.2.9](https://github.com/DND-IT/tamci/compare/v0.2.8...v0.2.9) (2026-09-30)
 
 
