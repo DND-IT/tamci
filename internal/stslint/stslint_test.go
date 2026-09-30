@@ -15,9 +15,17 @@ permissions:
   metadata: read
 `
 
+const harness = `issuer: https://a1d2b0fd-1177-4468-9351-2f0e723d1c44.tokens.sts.global.api.aws
+subject: arn:aws:iam::017421875774:role/agent-harness
+permissions:
+  contents: read
+  metadata: read
+`
+
 func TestLint_Passes(t *testing.T) {
 	cases := map[string]string{
-		"read-only policy on main": smoke,
+		"read-only policy on main":         smoke,
+		"read-only policy for an AWS role": harness,
 		"read-only policy reachable from pull requests": `issuer: https://token.actions.githubusercontent.com
 subject_pattern: repo:DND-IT@19909911/terraform-aws-github-token-broker@1379168258:(pull_request|ref:refs/heads/main)
 claim_pattern:
@@ -69,6 +77,26 @@ func TestLint_Fails(t *testing.T) {
 		"another issuer": {
 			strings.Replace(smoke, "https://token.actions.githubusercontent.com", "https://accounts.google.com", 1),
 			"issuer must be",
+		},
+		"AWS issuer that is not an account": {
+			strings.Replace(harness, "a1d2b0fd-1177-4468-9351-2f0e723d1c44.tokens.sts.global.api.aws", "sts.amazonaws.com", 1),
+			"issuer must be",
+		},
+		"AWS role as a pattern": {
+			strings.Replace(harness, "subject:", "subject_pattern:", 1),
+			"subject_pattern is not allowed with an AWS issuer",
+		},
+		"AWS subject that is not a role": {
+			strings.Replace(harness, "role/agent-harness", "user/alice", 1),
+			"subject must be one role ARN",
+		},
+		"AWS role with a claim pin": {
+			harness + "claim_pattern:\n  workflow_ref: .*\n",
+			"claim_pattern is not used with an AWS issuer",
+		},
+		"AWS role with write": {
+			strings.Replace(harness, "contents: read", "contents: write", 1),
+			"granted to an AWS identity",
 		},
 		"issuer pattern": {
 			"issuer_pattern: .*\n" + smoke,
