@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/DND-IT/tamci/compare/v0.2.8...v0.2.9) (2026-09-30)
+
+
+### Features
+
+* **sts-lint:** accept an AWS account issuer with one role as subject ([#34](https://github.com/DND-IT/tamci/issues/34)) ([40212d9](https://github.com/DND-IT/tamci/commit/40212d9f3f2fa2df510bb45f6a2e165c456f1dbc))
+
 ## [0.2.8](https://github.com/DND-IT/tamci/compare/v0.2.7...v0.2.8) (2026-09-25)
 
 
