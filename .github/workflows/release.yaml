@@ -52,9 +52,19 @@ jobs:
     needs: [release-please, build-and-push]
     if: needs.release-please.outputs.release_created == 'true'
     permissions:
-      contents: write
+      contents: read
+      id-token: write
     steps:
+      - uses: DND-IT/tamci/actions/token@v0
+        id: app-token
+        with:
+          url: ${{ vars.TOKEN_BROKER_URL }}
+          identity: release-please
+
       - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
       - name: update major and minor version tags
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
