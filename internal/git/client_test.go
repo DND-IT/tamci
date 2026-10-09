@@ -39,7 +39,7 @@ func initRemoteAndClone(t *testing.T) (bare, clone string) {
 	t.Helper()
 	root := t.TempDir()
 	bare = filepath.Join(root, "remote.git")
-	mustGit(t, "", "init", "--bare", bare)
+	mustGit(t, "", "init", "--bare", "-b", "main", bare)
 
 	seed := filepath.Join(root, "seed")
 	mustGit(t, "", "clone", bare, seed)
@@ -48,7 +48,7 @@ func initRemoteAndClone(t *testing.T) (bare, clone string) {
 	}
 	mustGit(t, seed, "add", "README.md")
 	mustGit(t, seed, "commit", "-m", "initial")
-	mustGit(t, seed, "push", "-u", "origin", "main")
+	mustGit(t, seed, "push", "-u", "origin", "HEAD:main")
 
 	clone = filepath.Join(root, "clone")
 	mustGit(t, "", "clone", bare, clone)
@@ -282,6 +282,7 @@ func TestIsAuthFailure(t *testing.T) {
 		{errors.New("Authentication failed for repo"), true},
 		{errors.New("unable to access 'https://github.com/o/r.git'"), true},
 		{errors.New("non-fast-forward"), false},
+		{errors.New("To /tmp/TestPush4040318165/remote.git\n ! [rejected] main -> main (fetch first)"), false},
 	}
 	for _, tc := range cases {
 		if got := isAuthFailure(tc.err); got != tc.want {

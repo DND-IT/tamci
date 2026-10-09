@@ -41,7 +41,7 @@ func initRemoteAndClone(t *testing.T, files map[string]string) (bare, clone stri
 	t.Helper()
 	root := t.TempDir()
 	bare = filepath.Join(root, "remote.git")
-	mustGit(t, "", "init", "--bare", bare)
+	mustGit(t, "", "init", "--bare", "-b", "main", bare)
 
 	seed := filepath.Join(root, "seed")
 	mustGit(t, "", "clone", bare, seed)
@@ -56,7 +56,7 @@ func initRemoteAndClone(t *testing.T, files map[string]string) (bare, clone stri
 	}
 	mustGit(t, seed, "add", ".")
 	mustGit(t, seed, "commit", "-m", "initial")
-	mustGit(t, seed, "push", "-u", "origin", "main")
+	mustGit(t, seed, "push", "-u", "origin", "HEAD:main")
 
 	clone = filepath.Join(root, "clone")
 	mustGit(t, "", "clone", bare, clone)
