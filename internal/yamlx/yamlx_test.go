@@ -563,3 +563,95 @@ func TestLoadFromFile(t *testing.T) {
 		t.Errorf("expected 1 change, got %d", len(changes))
 	}
 }
+
+func TestAnchoredAndTaggedScalarsWritten(t *testing.T) {
+	tests := []struct {
+		name   string
+		yaml   string
+		update func(doc *Document) error
+		want   string
+	}{
+		{
+			name: "marker on anchored double-quoted scalar",
+			yaml: `_initImage: &initImage "repo/app:1.8.1"  # x-yaml-update
+image: *initImage
+`,
+			update: func(doc *Document) error {
+				UpdateByMarker(doc, "x-yaml-update", "repo/app:9.9.9")
+				return nil
+			},
+			want: `_initImage: &initImage "repo/app:9.9.9"  # x-yaml-update
+image: *initImage
+`,
+		},
+		{
+			name: "marker on explicitly tagged scalar",
+			yaml: "version: !!str v1.0.0 # x-yaml-update\n",
+			update: func(doc *Document) error {
+				UpdateByMarker(doc, "x-yaml-update", "v2.0.0")
+				return nil
+			},
+			want: "version: !!str v2.0.0 # x-yaml-update\n",
+		},
+		{
+			name: "key on anchored and tagged scalar",
+			yaml: "app:\n  tag: &tag !!str tag\n",
+			update: func(doc *Document) error {
+				_, err := UpdateKeys(doc, []string{"app.tag"}, []string{"v2"})
+				return err
+			},
+			want: "app:\n  tag: &tag !!str v2\n",
+		},
+		{
+			name: "image tag with anchor",
+			yaml: "image:\n  repository: ghcr.io/org/app\n  tag: &appTag 'v1'\n",
+			update: func(doc *Document) error {
+				UpdateImageTags(doc, "app", "v2")
+				return nil
+			},
+			want: "image:\n  repository: ghcr.io/org/app\n  tag: &appTag 'v2'\n",
+		},
+		{
+			name: "same anchored scalar matched by two markers",
+			yaml: "tag: &t v1 # x-yaml-update:api\n",
+			update: func(doc *Document) error {
+				UpdateByMarker(doc, "x-yaml-update", "v2")
+				UpdateByMarker(doc, "x-yaml-update:api", "v3")
+				return nil
+			},
+			want: "tag: &t v3 # x-yaml-update:api\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := LoadYAML([]byte(tt.yaml))
+			if err != nil {
+				t.Fatalf("LoadYAML error: %v", err)
+			}
+			if err := tt.update(doc); err != nil {
+				t.Fatalf("update error: %v", err)
+			}
+			result, err := DumpYAML(doc)
+			if err != nil {
+				t.Fatalf("DumpYAML error: %v", err)
+			}
+			if string(result) != tt.want {
+				t.Errorf("got:\n%s\nwant:\n%s", result, tt.want)
+			}
+		})
+	}
+}
+
+func TestDumpYAMLErrorsOnUnappliedEdit(t *testing.T) {
+	doc, err := LoadYAML([]byte("base: &b v1\napp:\n  tag: *b\n"))
+	if err != nil {
+		t.Fatalf("LoadYAML error: %v", err)
+	}
+	if _, err := UpdateKeys(doc, []string{"app.tag"}, []string{"v2"}); err != nil {
+		t.Fatalf("UpdateKeys error: %v", err)
+	}
+	if _, err := DumpYAML(doc); err == nil {
+		t.Fatal("expected an error for an edit that cannot be applied, got nil")
+	}
+}
