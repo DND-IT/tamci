@@ -57,6 +57,7 @@ func newSetCmd() *cobra.Command {
 	f.Bool("auto-merge", false, "Enable auto-merge on the PR.")
 	f.String("merge-method", "SQUASH", "Merge method: MERGE | SQUASH | REBASE.")
 	f.Bool("dry-run", false, "Preview changes without modifying anything.")
+	f.Bool("fail-on-no-match", true, "Fail if nothing in any file matches the keys, image or markers.")
 	f.String("git-user-name", "github-actions[bot]", "Git committer name.")
 	f.String("git-user-email", "41898282+github-actions[bot]@users.noreply.github.com", "Git committer email.")
 
@@ -65,6 +66,7 @@ func newSetCmd() *cobra.Command {
 
 type setConfig struct {
 	files            []string
+	listedFiles      map[string]bool
 	mode             string
 	keys, values     []string
 	value            string
@@ -84,6 +86,7 @@ type setConfig struct {
 	autoMerge        bool
 	mergeMethod      string
 	dryRun           bool
+	failOnNoMatch    bool
 	gitUserName      string
 	gitUserEmail     string
 	githubRepo       string
@@ -108,6 +111,7 @@ func loadSetConfig(v *viper.Viper) (*setConfig, error) {
 		autoMerge:        v.GetBool("auto-merge"),
 		mergeMethod:      v.GetString("merge-method"),
 		dryRun:           v.GetBool("dry-run"),
+		failOnNoMatch:    v.GetBool("fail-on-no-match"),
 		gitUserName:      v.GetString("git-user-name"),
 		gitUserEmail:     v.GetString("git-user-email"),
 		githubRepo:       os.Getenv("GITHUB_REPOSITORY"),
@@ -121,6 +125,10 @@ func loadSetConfig(v *viper.Viper) (*setConfig, error) {
 	}
 
 	cfg.files = parseLines(v.GetString("files"))
+	cfg.listedFiles = make(map[string]bool, len(cfg.files))
+	for _, f := range cfg.files {
+		cfg.listedFiles[f] = true
+	}
 	if dir := v.GetString("files-from"); dir != "" {
 		discovered, err := discoverYAMLFiles(dir, v.GetString("files-filter"))
 		if err != nil {
@@ -204,6 +212,7 @@ func runSet(v *viper.Viper) error {
 	var allChanges []yamlx.Change
 	var changedFiles []string
 	var allDiffs []string
+	matches := 0
 
 	for _, filePath := range cfg.files {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -239,6 +248,16 @@ func runSet(v *viper.Viper) error {
 			}
 		}
 
+		matches += doc.Matches()
+		if doc.Matches() == 0 {
+			msg := fmt.Sprintf("Nothing in %s matches %s", filePath, setTarget(cfg))
+			if cfg.listedFiles[filePath] {
+				gha.Warning(msg)
+			} else {
+				fmt.Printf("  %s\n", msg)
+			}
+			continue
+		}
 		if len(changes) == 0 {
 			fmt.Printf("  No changes needed for %s\n", filePath)
 			continue
@@ -275,6 +294,9 @@ func runSet(v *viper.Viper) error {
 		_ = gha.SetOutput("pr_number", "")
 		_ = gha.SetOutput("pr_url", "")
 		_ = gha.SetOutput("commit_sha", "")
+		if matches == 0 && cfg.failOnNoMatch {
+			return fmt.Errorf("nothing in %d file(s) matches %s; set --fail-on-no-match=false to allow this", len(cfg.files), setTarget(cfg))
+		}
 		return nil
 	}
 	if cfg.dryRun {
@@ -377,6 +399,16 @@ func runSet(v *viper.Viper) error {
 		}
 	}
 	return nil
+}
+
+func setTarget(cfg *setConfig) string {
+	switch cfg.mode {
+	case "image":
+		return fmt.Sprintf("image %q", cfg.imageName)
+	case "marker":
+		return fmt.Sprintf("marker %q", strings.Join(cfg.markers, ", "))
+	}
+	return fmt.Sprintf("keys %q", strings.Join(cfg.keys, ", "))
 }
 
 func generateSetBranchName(cfg *setConfig) string {

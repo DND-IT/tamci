@@ -81,6 +81,10 @@ inputs:
     description: 'Preview changes without modifying anything'
     required: false
     default: 'false'
+  fail_on_no_match:
+    description: 'Fail the step if nothing in any file matches the keys, image or markers. Files listed in `files` that match nothing get a warning either way.'
+    required: false
+    default: 'true'
   git_user_name:
     description: 'Git committer name'
     required: false

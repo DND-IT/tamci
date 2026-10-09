@@ -655,3 +655,68 @@ func TestDumpYAMLErrorsOnUnappliedEdit(t *testing.T) {
 		t.Fatal("expected an error for an edit that cannot be applied, got nil")
 	}
 }
+
+func TestMatches(t *testing.T) {
+	tests := []struct {
+		name   string
+		yaml   string
+		update func(*Document)
+		want   int
+	}{
+		{
+			name:   "image already at tag",
+			yaml:   "image:\n  repository: ghcr.io/myorg/webapp\n  tag: v1.0.0\n",
+			update: func(d *Document) { UpdateImageTags(d, "webapp", "v1.0.0") },
+			want:   1,
+		},
+		{
+			name:   "image not found",
+			yaml:   "image:\n  repository: ghcr.io/myorg/other\n  tag: v1.0.0\n",
+			update: func(d *Document) { UpdateImageTags(d, "webapp", "v2.0.0") },
+			want:   0,
+		},
+		{
+			name:   "image in scalar anchor",
+			yaml:   "x-image: &image ghcr.io/myorg/webapp:v1.0.0\nworker:\n  image: *image\n",
+			update: func(d *Document) { UpdateImageTags(d, "webapp", "v2.0.0") },
+			want:   0,
+		},
+		{
+			name:   "kustomize already at tag",
+			yaml:   "images:\n  - name: ghcr.io/myorg/webapp\n    newTag: v1.0.0\n",
+			update: func(d *Document) { UpdateImageTags(d, "webapp", "v1.0.0") },
+			want:   1,
+		},
+		{
+			name:   "marker already at value",
+			yaml:   "tag: v1.0.0 # x-yaml-update\n",
+			update: func(d *Document) { UpdateByMarker(d, "x-yaml-update", "v1.0.0") },
+			want:   1,
+		},
+		{
+			name:   "marker not found",
+			yaml:   "tag: v1.0.0\n",
+			update: func(d *Document) { UpdateByMarker(d, "x-yaml-update", "v2.0.0") },
+			want:   0,
+		},
+		{
+			name:   "key already at value",
+			yaml:   "app:\n  version: v1.0.0\n",
+			update: func(d *Document) { _, _ = UpdateKeys(d, []string{"app.version"}, []string{"v1.0.0"}) },
+			want:   1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := LoadYAML([]byte(tt.yaml))
+			if err != nil {
+				t.Fatal(err)
+			}
+			tt.update(doc)
+			if got := doc.Matches(); got != tt.want {
+				t.Errorf("Matches() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}

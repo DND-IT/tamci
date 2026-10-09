@@ -53,6 +53,17 @@ tamci set --files deploy/values.yaml --mode marker --value 1.4.0
 
 Multiple markers: `--markers` (newline-separated) + `--values`.
 
+## When nothing matches
+
+A file where nothing matches the keys, image or markers is not the same
+as a file that is already up to date. Each file listed in `--files` that
+matches nothing gets a `::warning::` annotation; files found by
+`--files-from` are only logged. If nothing matches in any file, `set`
+fails, so a deploy step pointed at the wrong image or a removed marker
+does not pass silently. Pass `--fail-on-no-match=false` to allow it.
+
+In `--mode key` a missing key path already fails the run.
+
 ## PR / commit options
 
 | Flag              | Default                            |
