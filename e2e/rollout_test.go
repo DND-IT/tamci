@@ -16,7 +16,7 @@ func remote(t *testing.T, files map[string]string) (bare, clone string) {
 	t.Helper()
 	root := t.TempDir()
 	bare = filepath.Join(root, "remote.git")
-	git(t, root, "init", "-q", "--bare", bare)
+	git(t, root, "init", "-q", "--bare", "-b", "main", bare)
 	seed := filepath.Join(root, "seed")
 	git(t, root, "clone", "-q", bare, seed)
 	for name, content := range files {
@@ -24,7 +24,7 @@ func remote(t *testing.T, files map[string]string) (bare, clone string) {
 	}
 	git(t, seed, "add", ".")
 	git(t, seed, "commit", "-q", "-m", "chore: initial")
-	git(t, seed, "push", "-q", "-u", "origin", "main")
+	git(t, seed, "push", "-q", "-u", "origin", "HEAD:main")
 	clone = filepath.Join(root, "clone")
 	git(t, root, "clone", "-q", bare, clone)
 	return bare, clone

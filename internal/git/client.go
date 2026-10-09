@@ -133,7 +133,7 @@ func isAuthFailure(err error) bool {
 		return false
 	}
 	msg := err.Error()
-	for _, p := range []string{"403", "unable to access", "could not read Username", "Authentication failed", "Permission denied"} {
+	for _, p := range []string{"returned error: 403", "unable to access", "could not read Username", "Authentication failed", "Permission denied"} {
 		if strings.Contains(msg, p) {
 			return true
 		}
