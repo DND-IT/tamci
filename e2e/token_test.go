@@ -10,7 +10,8 @@ import (
 
 type broker struct {
 	*httptest.Server
-	revoked atomic.Bool
+	revoked   atomic.Bool
+	exchanges atomic.Int32
 }
 
 // newBroker fakes the runner's OIDC endpoint, an octo-sts exchange that
@@ -28,6 +29,7 @@ func newBroker(t *testing.T) *broker {
 			}
 			_, _ = w.Write([]byte(`{"value":"oidc-jwt"}`))
 		case r.URL.Path == "/sts/exchange":
+			b.exchanges.Add(1)
 			if auth != "Bearer oidc-jwt" || q.Get("scope") != "DND-IT/app" {
 				http.Error(w, "bad exchange request", http.StatusUnauthorized)
 				return
@@ -110,8 +112,20 @@ func TestToken_ExchangeDenied(t *testing.T) {
 	if _, ok := r.outputs["token"]; ok {
 		t.Error("token output set on failure")
 	}
-	if len(r.state) != 0 {
-		t.Errorf("state saved on failure: %v", r.state)
+	if r.state["isPost"] != "true" || r.state["token"] != "" {
+		t.Fatalf("state saved on failure = %v, want only isPost=true", r.state)
+	}
+
+	postEnv := b.env("deploy")
+	for k, v := range r.state {
+		postEnv["STATE_"+k] = v
+	}
+	post := tamci(t, t.TempDir(), postEnv, "token")
+	if post.err != nil {
+		t.Fatalf("post step: %v", post.err)
+	}
+	if n := b.exchanges.Load(); n != 1 {
+		t.Errorf("broker saw %d exchanges, want 1: the post step must not exchange again", n)
 	}
 }
 

@@ -41,6 +41,14 @@ func newTokenCmd() *cobra.Command {
 }
 
 func runToken(v *viper.Viper) error {
+	// Mark the post step before anything can fail: without the mark it runs
+	// this exchange again, and the token it gets is never revoked.
+	if os.Getenv("GITHUB_STATE") != "" {
+		if err := gha.SaveState("isPost", "true"); err != nil {
+			return err
+		}
+	}
+
 	exchangeURL := v.GetString("url")
 	if exchangeURL == "" {
 		return fmt.Errorf("--url (INPUT_URL) is required")
@@ -83,10 +91,7 @@ func runToken(v *viper.Viper) error {
 		return err
 	}
 	if os.Getenv("GITHUB_STATE") != "" {
-		if err := gha.SaveState("token", installationToken); err != nil {
-			return err
-		}
-		return gha.SaveState("isPost", "true")
+		return gha.SaveState("token", installationToken)
 	}
 	return nil
 }
