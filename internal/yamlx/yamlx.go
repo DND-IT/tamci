@@ -55,7 +55,7 @@ func LoadYAML(content []byte) (*Document, error) {
 // to the original content to preserve blank lines and other formatting.
 func DumpYAML(doc *Document) ([]byte, error) {
 	if len(doc.edits) > 0 && len(doc.original) > 0 {
-		return applyEdits(doc.original, doc.edits), nil
+		return applyEdits(doc.original, doc.edits)
 	}
 
 	var buf strings.Builder
@@ -70,13 +70,15 @@ func DumpYAML(doc *Document) ([]byte, error) {
 }
 
 // applyEdits performs targeted text replacements at exact positions in the original content.
-func applyEdits(original []byte, edits []valueEdit) []byte {
+// An edit that cannot be applied is an error, so a reported change is never silently dropped.
+func applyEdits(original []byte, edits []valueEdit) ([]byte, error) {
 	lines := strings.SplitAfter(string(original), "\n")
 
 	// Sort edits in reverse order so earlier positions stay valid after replacement.
+	// Stable so repeated edits of the same node apply in the order they were made.
 	sorted := make([]valueEdit, len(edits))
 	copy(sorted, edits)
-	sort.Slice(sorted, func(i, j int) bool {
+	sort.SliceStable(sorted, func(i, j int) bool {
 		if sorted[i].Line != sorted[j].Line {
 			return sorted[i].Line > sorted[j].Line
 		}
@@ -84,23 +86,38 @@ func applyEdits(original []byte, edits []valueEdit) []byte {
 	})
 
 	for _, edit := range sorted {
-		lineIdx := edit.Line - 1
-		if lineIdx < 0 || lineIdx >= len(lines) {
-			continue
-		}
-
-		line := lines[lineIdx]
-		colIdx := edit.Column - 1
-
 		oldRepr := formatScalar(edit.OldValue, edit.Style)
 		newRepr := formatScalar(edit.NewValue, edit.Style)
 
-		if colIdx < len(line) && colIdx+len(oldRepr) <= len(line) && line[colIdx:colIdx+len(oldRepr)] == oldRepr {
-			lines[lineIdx] = line[:colIdx] + newRepr + line[colIdx+len(oldRepr):]
+		lineIdx := edit.Line - 1
+		if lineIdx < 0 || lineIdx >= len(lines) {
+			return nil, fmt.Errorf("cannot apply edit %s -> %s: line %d out of range", oldRepr, newRepr, edit.Line)
 		}
+
+		line := lines[lineIdx]
+		colIdx := skipNodeProperties(line, edit.Column-1)
+
+		if colIdx+len(oldRepr) > len(line) || line[colIdx:colIdx+len(oldRepr)] != oldRepr {
+			return nil, fmt.Errorf("cannot apply edit %s -> %s at line %d column %d: value not found", oldRepr, newRepr, edit.Line, edit.Column)
+		}
+		lines[lineIdx] = line[:colIdx] + newRepr + line[colIdx+len(oldRepr):]
 	}
 
-	return []byte(strings.Join(lines, ""))
+	return []byte(strings.Join(lines, "")), nil
+}
+
+// skipNodeProperties advances past anchor (&name) and tag (!tag) tokens at idx,
+// because yaml.v3 reports a node's column at its first property, not its value.
+func skipNodeProperties(line string, idx int) int {
+	for idx < len(line) && (line[idx] == '&' || line[idx] == '!') {
+		for idx < len(line) && line[idx] != ' ' && line[idx] != '\t' {
+			idx++
+		}
+		for idx < len(line) && (line[idx] == ' ' || line[idx] == '\t') {
+			idx++
+		}
+	}
+	return idx
 }
 
 func formatScalar(value string, style yaml.Style) string {
