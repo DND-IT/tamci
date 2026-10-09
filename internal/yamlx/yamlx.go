@@ -32,6 +32,13 @@ type Document struct {
 	Indent   int
 	original []byte      // stored for targeted edits
 	edits    []valueEdit // tracked during updates
+	matches  int
+}
+
+// Matches returns how many nodes the Update* calls on doc targeted,
+// including nodes that already held the requested value.
+func (doc *Document) Matches() int {
+	return doc.matches
 }
 
 // LoadYAML parses YAML content into a Document for format-preserving editing.
@@ -164,6 +171,7 @@ func UpdateKeys(doc *Document, keys, values []string) ([]Change, error) {
 			return nil, err
 		}
 
+		doc.matches++
 		oldValue := nodeValue(node)
 		coerced := coerceValue(newValue, node)
 
@@ -240,6 +248,7 @@ func walkMarker(doc *Document, node *yaml.Node, marker, newValue string, changes
 			}
 
 			if valNode.Kind == yaml.ScalarNode && hasMarker(valNode.LineComment, marker) {
+				doc.matches++
 				oldValue := nodeValue(valNode)
 				coerced := coerceValue(newValue, valNode)
 
@@ -331,6 +340,7 @@ func walkImageTags(doc *Document, node *yaml.Node, imageName, newTag string, cha
 			if tagNode, ok := keyMap["tag"]; ok {
 				repoVal := repoNode.Value
 				if strings.HasSuffix(repoVal, "/"+imageName) || repoVal == imageName {
+					doc.matches++
 					oldTag := nodeValue(tagNode)
 					coerced := coerceValue(newTag, tagNode)
 					if tagNode.Value != coerced {
@@ -361,6 +371,7 @@ func walkImageTags(doc *Document, node *yaml.Node, imageName, newTag string, cha
 			if newTagNode, ok := keyMap["newTag"]; ok {
 				nameVal := nameNode.Value
 				if strings.HasSuffix(nameVal, "/"+imageName) || nameVal == imageName {
+					doc.matches++
 					oldTag := nodeValue(newTagNode)
 					coerced := coerceValue(newTag, newTagNode)
 					if newTagNode.Value != coerced {
