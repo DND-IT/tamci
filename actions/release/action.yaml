@@ -28,7 +28,7 @@ inputs:
     required: false
     default: 'false'
   include-path:
-    description: 'Glob pattern to scope commits by file path (e.g. "services/api/**").'
+    description: 'Glob patterns to scope commits by file path, separated by spaces or newlines (e.g. "services/api/** libs/shared/**").'
     required: false
     default: ''
   dry-run:

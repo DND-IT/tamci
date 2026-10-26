@@ -18,7 +18,7 @@ Replaces `action-releaser` (which will be renamed to `action-release`).
 | `--release-mode`    | `direct`   | `direct` \| `pr`.                                                   |
 | `--draft`           | `false`    | Create release as draft.                                            |
 | `--prerelease`      | `false`    | Mark release as prerelease.                                         |
-| `--include-path`    | _(empty)_  | Glob to scope commits (e.g. `services/api/**`) for monorepos.       |
+| `--include-path`    | _(empty)_  | Globs to scope commits for monorepos, separated by spaces or newlines (e.g. `services/api/** libs/shared/**`). |
 | `--dry-run`         | `false`    | Calculate version + changelog without creating tag/release.         |
 | `--github-token`    | env        | Falls back to `GITHUB_TOKEN`.                                       |
 
