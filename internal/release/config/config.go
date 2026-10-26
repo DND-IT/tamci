@@ -28,12 +28,14 @@ func (c Config) ServicePath() string {
 }
 
 // IncludeGlob returns the git-cliff --include-path glob that scopes commits to
-// the current package or include-path, or "" for root-level releases.
+// the current package or include-path, or "" for root-level releases. Several
+// globs are joined by single spaces, the one separator git-cliff splits on, so a
+// list given one per line scopes later releases the same way as the first.
 func (c Config) IncludeGlob() string {
 	if c.CurrentPackage != nil && c.CurrentPackage.Path != "" {
 		return c.CurrentPackage.Path + "/**"
 	}
-	return c.IncludePath
+	return strings.Join(strings.Fields(c.IncludePath), " ")
 }
 
 // Config holds the merged configuration from .release.yml and action inputs.

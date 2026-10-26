@@ -427,6 +427,39 @@ func TestServicePath(t *testing.T) {
 	}
 }
 
+func TestIncludeGlob_JoinsGlobsWithSingleSpaces(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  Config
+		want string
+	}{
+		{name: "no path info", cfg: Config{}, want: ""},
+		{name: "one glob", cfg: Config{IncludePath: "services/api/**"}, want: "services/api/**"},
+		{
+			name: "one glob per line",
+			cfg:  Config{IncludePath: "services/api/**\nlibs/shared/**\n"},
+			want: "services/api/** libs/shared/**",
+		},
+		{
+			name: "tabs and repeated spaces",
+			cfg:  Config{IncludePath: "  services/api/**\t libs/shared/**  "},
+			want: "services/api/** libs/shared/**",
+		},
+		{
+			name: "package path takes precedence",
+			cfg:  Config{CurrentPackage: &Package{Path: "services/api"}, IncludePath: "libs/**"},
+			want: "services/api/**",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cfg.IncludeGlob(); got != tt.want {
+				t.Errorf("IncludeGlob() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestLoad_ReleaseModeFromFile(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
