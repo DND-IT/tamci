@@ -138,8 +138,13 @@ func hasConventionalCommitsSinceRef(ref, includeGlob string) (bool, error) {
 	if ref != "" {
 		args = append(args, ref+"..HEAD")
 	}
-	if includeGlob != "" {
-		args = append(args, "--", ":(glob)"+includeGlob)
+	// include-path may list several space-separated globs, as git-cliff's
+	// --include-path takes them; git log needs one pathspec per glob.
+	if globs := strings.Fields(includeGlob); len(globs) > 0 {
+		args = append(args, "--")
+		for _, glob := range globs {
+			args = append(args, ":(glob)"+glob)
+		}
 	}
 	out, err := exec.Command("git", args...).Output()
 	if err != nil {

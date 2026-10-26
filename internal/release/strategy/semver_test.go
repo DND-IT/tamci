@@ -93,3 +93,22 @@ func TestSemver_NextVersion_BootstrapScopedToIncludePath(t *testing.T) {
 		t.Fatalf("got %+v, %v; want 0.1.0", got, err)
 	}
 }
+
+func TestSemver_NextVersion_BootstrapWithSeveralIncludePaths(t *testing.T) {
+	monorepo(t)
+	commit(t, "other/b", "feat(other): unrelated")
+	cfg := config.Config{TagPrefix: "svc/v", IncludePath: "svc/** libs/shared/**"}
+
+	got, err := (&Semver{}).NextVersion(nil, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Skipped {
+		t.Fatalf("first release with no commits under any include-path: got %q", got.Version)
+	}
+
+	commit(t, "libs/shared/a", "feat(shared): used by svc")
+	if got, err = (&Semver{}).NextVersion(nil, cfg); err != nil || got.Version != "0.1.0" {
+		t.Fatalf("got %+v, %v; want 0.1.0 from a commit under the second include-path", got, err)
+	}
+}
