@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.11](https://github.com/DND-IT/tamci/compare/v0.2.10...v0.2.11) (2026-10-26)
+
+
+### Bug Fixes
+
+* **release:** match every include-path glob on a first release ([#46](https://github.com/DND-IT/tamci/issues/46)) ([13081a2](https://github.com/DND-IT/tamci/commit/13081a2df108c2e9b24a99980ecc2e0617ce27bd))
+* **rollout:** stop treating any "403" substring in push output as an auth failure ([#43](https://github.com/DND-IT/tamci/issues/43)) ([e386d26](https://github.com/DND-IT/tamci/commit/e386d26520215f8c56edf303d44b8c65652bdba4))
+* **set:** fail when nothing matches instead of reporting no changes ([#42](https://github.com/DND-IT/tamci/issues/42)) ([35a1116](https://github.com/DND-IT/tamci/commit/35a1116165dc4a7f891db0734e93e79e36b05168)), closes [#40](https://github.com/DND-IT/tamci/issues/40)
+* **set:** write edits to anchored and tagged scalars ([#41](https://github.com/DND-IT/tamci/issues/41)) ([653c252](https://github.com/DND-IT/tamci/commit/653c252aebe365ef6d7254bc44f188cbf3d60a78)), closes [#39](https://github.com/DND-IT/tamci/issues/39)
+
 ## [0.2.10](https://github.com/DND-IT/tamci/compare/v0.2.9...v0.2.10) (2026-09-30)
 
 
