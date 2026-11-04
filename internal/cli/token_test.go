@@ -51,7 +51,32 @@ func TestToken_ExchangesAndSavesState(t *testing.T) {
 	if got, _ := os.ReadFile(out); string(got) != "token=ghs_DND-IT/x_release\n" {
 		t.Errorf("output = %q", got)
 	}
-	if got, _ := os.ReadFile(state); string(got) != "token=ghs_DND-IT/x_release\nisPost=true\n" {
+	if got, _ := os.ReadFile(state); string(got) != "isPost=true\ntoken=ghs_DND-IT/x_release\n" {
+		t.Errorf("state = %q", got)
+	}
+}
+
+func TestToken_FailedExchangeStillMarksPostStep(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oidc" {
+			_, _ = w.Write([]byte(`{"value":"oidc"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+	state := filepath.Join(t.TempDir(), "state")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", srv.URL+"/oidc")
+	t.Setenv("GITHUB_OUTPUT", filepath.Join(t.TempDir(), "output"))
+	t.Setenv("GITHUB_STATE", state)
+	t.Setenv("STATE_isPost", "")
+
+	cmd := NewRootCmd()
+	cmd.SetArgs([]string{"token", "--url", srv.URL + "/sts/exchange", "--identity", "release", "--scope", "DND-IT/x"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "HTTP 404") {
+		t.Fatalf("expected the exchange to fail, got %v", err)
+	}
+	if got, _ := os.ReadFile(state); string(got) != "isPost=true\n" {
 		t.Errorf("state = %q", got)
 	}
 }
